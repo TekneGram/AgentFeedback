@@ -31,7 +31,7 @@ def build_settings() -> AppConfig:
     )
 
     ged = GedConfig.from_strings(
-        model_name="gotutiyan/token-get-bert-large-cased-bin",
+        model_name="gotutiyan/token-ged-bert-large-cased-bin",
         batch_size=8,
     )
 

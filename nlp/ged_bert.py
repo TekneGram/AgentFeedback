@@ -27,8 +27,46 @@ class GedBertDetector:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(device)
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model = AutoModelForTokenClassification.from_pretrained(self.model_name)
         self.model.to(self.device)
         self.model.eval()
 
         self.ERROR_ID = 1
+
+    @torch.no_grad()
+    def score_sentences(self, sentences: List[str], batch_size: int = 8) -> List[GedSentenceResult]:
+
+        results: List[GedSentenceResult] = []
+
+        for i in range(0, len(sentences), batch_size):
+            batch = sentences[i : i + batch_size]
+
+            enc = self.tokenizer(
+                batch,
+                return_tensors="pt",
+                padding=True,
+                truncation=True
+            )
+
+            enc = {k: v.to(self.device) for k, v in enc.items()}
+            outputs = self.model(**enc)
+            preds = torch.argmax(outputs.logits, dim=-1)
+            attn = enc["attention_mask"]
+            input_ids = enc["input_ids"]
+            special_ids = set(self.tokenizer.all_special_ids)
+
+            for b_idx, sent in enumerate(batch):
+                has_error = False
+                for t_idx in range(preds.shape[1]):
+                    if attn[b_idx, t_idx].item() == 0:
+                        continue
+                    if int(input_ids[b_idx, t_idx].item()) in special_ids:
+                        continue
+                    if int(preds[b_idx, t_idx].item()) == self.ERROR_ID:
+                        has_error = True
+                        break
+                results.append(GedSentenceResult(sentence=sent, has_error=has_error))
+            return results
+        
