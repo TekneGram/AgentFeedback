@@ -5,12 +5,14 @@ from pathlib import Path
 from config.ged_config import GedConfig
 from config.paths_config import PathsConfig
 from config.run_config import RunConfig
+from config.llama_config import LlamaConfig
 
 @dataclass(frozen=True, slots=True)
 class AppConfig:
     paths: PathsConfig
     run: RunConfig
     ged: GedConfig
+    llama: LlamaConfig
 
 
 def build_settings() -> AppConfig:
@@ -35,4 +37,11 @@ def build_settings() -> AppConfig:
         batch_size=8,
     )
 
-    return AppConfig(paths=paths, run=run, ged=ged)
+    llama = LlamaConfig.from_strings(
+        llama_backend="local",
+        llama_gguf_path="",
+        llama_server_url="http://127.0.0.1:8080/v1/chat/completions",
+        llama_server_model = "llama"
+    )
+
+    return AppConfig(paths=paths, run=run, ged=ged, llama=llama)
