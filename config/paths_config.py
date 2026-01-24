@@ -14,6 +14,9 @@ class PathsConfig:
     output_docx_folder: Path
     explained_txt_folder: Path
 
+    def list_input_docx(self) -> list[Path]:
+        return sorted(self.input_docx_folder.glob("*.docx"))
+
     @staticmethod
     def from_strings(
         input_docx_folder: str | Path,

@@ -87,5 +87,8 @@ transformers_cache/
 *.pem
 *.p12
 
+# Corpus files
+Assessment
+
 # Keep this file
 !.gitignore
