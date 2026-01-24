@@ -15,10 +15,10 @@ class AppConfig:
 
 def build_settings() -> AppConfig:
 
-    paths = PathsConfig.from_string(
-        input_docx_folder="../Assessment/in",
-        output_docx_folder="../Assessment/checked",
-        explained_txt_folder="../Assessment/explained"
+    paths = PathsConfig.from_strings(
+        input_docx_folder="Assessment/in",
+        output_docx_folder="Assessment/checked",
+        explained_txt_folder="Assessment/explained"
     )
     paths.validate()
     paths.ensure_output_dirs()
