@@ -24,8 +24,14 @@ def main():
 
     # Run on all input docs
     for docx_path in app_cfg.paths.list_input_docx():
-        pipeline.llm.answer("Can you tell me the time?")
         pipeline.run_on_file(docx_path, app_cfg)
+
+    reply = pipeline.llm.answer("Tell me briefly about quantum mechanics in fifty words or less.")
+    print(reply)
+    # Stop llama-server explicitly on normal shutdown
+    server_proc = deps.get("llama-server")
+    if server_proc is not None:
+        server_proc.stop()
     
 
 
