@@ -26,7 +26,7 @@ essaylens/
 
   services/
     ged_service.py               # thin wrapper around GedBertDetector
-    llm_service.py               # thin wrapper around LlamaCorrector
+    llm_service.py               # app-facing API that calls nlp.llm.tasks
     feature_feedback.py          # calls CE/CC checkers + LLM for feedback strings
 
   features/
@@ -38,7 +38,19 @@ essaylens/
 
   nlp/
     ged_bert.py                  # your ged_bert_class.py
-    llama_corrector.py           # your llama_corrector.py
+    llm/
+      server_process.py          # starts/stops llama-server (persisten model load)
+      client.py                  # OpenAI-compatible chat client (requests)
+      postprocess.py             # shared cleanup (one-line, strip quotes, JSON extractions)
+      cache.py                   # Small in-memory cache helper
+      tasks/
+        correction.py            # "correct sentence" task prompt + call
+        topic_sentence.py        # topic sentence feedback task
+        cause_effect.py          # CE feedback task
+        compare_contrast.py      # CC feedback task
+        conclusion.py            # conclusion feedback task
+        praise.py                # praise task
+        personalize.py           # JSON-based personalize feedback task
 
 tests/
   test_preprocessing.py
@@ -276,3 +288,11 @@ To reset
 unset DEV_MODE
 python provide_fb.py
 ```
+
+## Get the llama-server binary
+```bash
+brew install llama.cpp
+```
+Find the llama-server binary and copy it into `.appdata/bin`
+
+`.appdata/models` contains the gguf
