@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import time
 import requests
+import time
 
 @dataclass
 
@@ -21,7 +22,7 @@ class LlamaServerProcess:
     def is_running(self) -> bool:
         return self._proc is not None and (self._proc.poll() is None)
     
-    def start(self, wait_s: float = 30.0) -> None:
+    def start(self, wait_s: float = 180.0) -> None:
         if self.is_running():
             return
         
@@ -33,6 +34,7 @@ class LlamaServerProcess:
         cmd = [
             str(self.server_bin),
             "-m", str(self.model_path),
+            "--alias", "llama",
             "-c", str(self.n_ctx),
             "--host", self.host,
             "--port", str(self.port)
@@ -86,6 +88,8 @@ class LlamaServerProcess:
         self._proc.terminate()
         try:
             self._proc.wait(timeout=5)
-        except subprocess.TiomeoutExpired:
+        except subprocess.TimeoutExpired:
             self._proc.kill()
         self._proc = None
+
+    

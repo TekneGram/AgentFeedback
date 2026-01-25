@@ -64,6 +64,9 @@ wandb/
 mlruns/
 lightning_logs/
 .appdata/bin
+third_party/llama.cpp/build/
+third_party/llama.cpp/.cache/
+third_party/llama.cpp
 
 # Hugging Face / Transformers caches
 .huggingface/

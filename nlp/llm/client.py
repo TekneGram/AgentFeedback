@@ -13,13 +13,15 @@ class OpenAICompatChatClient:
         payload = {
             "model": self.model_name,
             "temperature": self.temperature,
-            "max_token": max_tokens,
+            "max_tokens": max_tokens,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user}
             ],
         }
         r = requests.post(self.chat_url, json=payload, timeout=self.timeout_s)
-        r.raise_for_status()
+        if r.status_code != 200:
+            # show the server’s explanation (often “Loading model”)
+            raise RuntimeError(f"llama-server HTTP {r.status_code}: {r.text[:1000]}")
         data = r.json()
         return (data["choices"][0]["message"]["content"] or "").strip()

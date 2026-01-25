@@ -6,6 +6,7 @@ import os
 import sys
 from platformdirs import user_data_dir
 from shutil import which, copy2
+from helpers.llama_build import build_llama_server
 
 def ensure_gguf(cfg, models_dir: Path) -> Path:
     models_dir.mkdir(parents=True, exist_ok=True)
@@ -52,6 +53,14 @@ def _get_app_base_dir(app_name: str, org: str) -> Path:
     # Prod mode -> OS-standard user data dir
     return Path(user_data_dir(app_name, org)).resolve()
 
+def ensure_llama_server_bin(app_cfg) -> Path:
+    server = _get_app_base_dir("EssayLens", "TekneGram") / "bin" / ("llama-server.exe" if sys.platform == "win32" else "llama-server")
+    if server.exists() and server.stat().st_size > 0:
+        return server
+    
+    return build_llama_server(server, metal=False)
+
+
 def bootstrap_llama(app_cfg):
     # Decide an app data dir (Electron later can pass its own) this:contentReference[oaicite:15]{index=15}Path(user_data_dir("YourAppName", "YourOrg")).resolve()
     base = _get_app_base_dir("EssayLens", "TekneGram")
@@ -59,10 +68,13 @@ def bootstrap_llama(app_cfg):
     models_dir = base / "models"
 
     gguf_path = ensure_gguf(app_cfg, models_dir)
+    server_bin = ensure_llama_server_bin(app_cfg)
+    print(server_bin)
 
     new_llama = replace(
         app_cfg.llama,
-        llama_gguf_path=str(gguf_path)
+        llama_gguf_path=str(gguf_path),
+        llama_server_bin_path=str(server_bin)
     )
 
     new_llama.validate_resolved()

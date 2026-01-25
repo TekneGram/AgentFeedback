@@ -3,12 +3,56 @@ from nlp.ged_bert import GedBertDetector
 from services.ged_service import GedService
 from services.llm_service import LlmService
 
+from nlp.llm.server_process import LlamaServerProcess
+from nlp.llm.client import OpenAICompatChatClient
+
+from pathlib import Path
+
+def _resolve_path(p: str, project_root: Path) -> Path:
+    pp = Path(p).expanduser()
+    return pp if pp.is_absolute() else (project_root / pp).resolve()
+
 def build_container(cfg):
+    """
+    Pattern-preserving container:
+     - takes cfg
+     - constructs shared dependencies once
+     - returns dict of services
+    """
+    project_root = Path(__file__).resolve().parents[1]
+
     loader = DocxLoader(strip_whitespace=True, keep_empty_paragraphs=False)
     ged_detector = GedBertDetector(model_name=cfg.ged.model_name)
     ged_service = GedService(detector=ged_detector)
 
+    # LLM wiring (server mode)
+    server_proc = None
+    if cfg.llama.llama_backend == "server":
+        server_bin = _resolve_path(cfg.llama.llama_server_bin_path, project_root)
+        model_path = Path(cfg.llama.llama_gguf_path).expanduser().resolve()
+
+        server_proc = LlamaServerProcess(
+            server_bin=server_bin,
+            model_path=model_path,
+            host="127.0.0.1",
+            port=8080,
+            n_ctx=4096,
+            n_threads=None
+        )
+        server_proc.start()
+
+    client = OpenAICompatChatClient(
+        chat_url=cfg.llama.llama_server_url,
+        model_name=cfg.llama.llama_server_model,
+        timeout_s=120,
+        temperature=0.0
+    )
+    llm_service = LlmService(client=client)
+
     return {
         "loader": loader,
-        "ged": ged_service
+        "ged": ged_service,
+        "cfg": cfg,
+        "llm": llm_service,
+        "llama-server": server_proc,
     }
