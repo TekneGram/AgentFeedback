@@ -8,13 +8,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from inout.docx_loader import DocxLoader
     from services.ged_service import GedService
+    from services.llm_service import LlmService
 
 @dataclass
 class FeedbackPipeline:
     loader: "DocxLoader"
     ged: "GedService"
+    llm: "LlmService"
     # editor: object
-    # llm: object
     # features: object
     # choose: object
     # selector: object
