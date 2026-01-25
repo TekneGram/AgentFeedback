@@ -63,6 +63,7 @@ model_cache/
 wandb/
 mlruns/
 lightning_logs/
+.appdata/bin
 
 # Hugging Face / Transformers caches
 .huggingface/

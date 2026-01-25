@@ -38,10 +38,13 @@ def build_settings() -> AppConfig:
     )
 
     llama = LlamaConfig.from_strings(
-        llama_backend="local",
-        llama_gguf_path="",
+        llama_backend="server",
+        llama_gguf_path="", # empty until bootstrap
         llama_server_url="http://127.0.0.1:8080/v1/chat/completions",
-        llama_server_model = "llama"
+        llama_server_model = "llama",
+        llama_server_bin_path=".appdata/bin/llama-server",
+        hf_repo_id="tensorblock/Llama-3.2-8B-Instruct-GGUF",
+        hf_filename="Llama-3.2-8B-Instruct-Q4_K_M.gguf"
     )
 
     return AppConfig(paths=paths, run=run, ged=ged, llama=llama)

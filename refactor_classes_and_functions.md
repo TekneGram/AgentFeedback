@@ -261,3 +261,18 @@ Keep it thin:
 - parse config / CLI args
 - build container/services (`app/container.py`)
 - call `FeedbackPipeline.run_all(...)` or loop calling `run_on_file(...)`
+
+
+## Running in dev mode
+CLI:
+```bash
+export DEV_MODE=1
+python provide_fb.py
+```
+This will create `<repo>/.appdata/models/...`
+
+To reset
+```bash
+unset DEV_MODE
+python provide_fb.py
+```
