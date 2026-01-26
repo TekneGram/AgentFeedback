@@ -67,6 +67,7 @@ Default config is in `app/settings.py` and includes:
 - Run config (e.g., `max_llm_corrections`)
 
 If the GGUF model or llama-server binary is missing, `bootstrap_llama` will download/build them into `.appdata/`.
+On first run, a large language model (Llama‑3.1‑8B‑Instruct GGUF) will be downloaded if it is not already present.
 
 ## TODO (Packaging)
 - Decide where spaCy `en_core_web_sm` should live inside the packaged app (resource path vs. app data).
