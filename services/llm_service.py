@@ -60,7 +60,6 @@ class LlmService:
         sentences = [sent.text for sent in doc.sents]
         edited_sentences_minus_topic = " ".join(sentences[1:])
         learner_topic_sentence = sentences[0]
-        print(learner_topic_sentence)
         suggested_topic_sentence = generate_topic_sentence(self.client, edited_sentences_minus_topic, max_tokens=1024, temperature=0.5)
         if explain is not None:
             explain.log("LLM - topic sentence analysis", f"Generate suggested sentence: {suggested_topic_sentence}")

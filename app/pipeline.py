@@ -6,6 +6,8 @@ import hashlib
 import random
 from text.header_extractor import build_edited_text, build_text_from_header_and_body, build_paragraphs_from_header_and_body
 
+from utils.terminal_ui import stage, Color, type_print
+
 # I do not create DocxLoader objects
 # They are injected into this pipeline so I only need to type check it.
 if TYPE_CHECKING:
@@ -26,6 +28,7 @@ class FeedbackPipeline:
     docx_out: "DocxOutputService"
 
     def run_on_file(self, docx_path: Path, cfg) -> None:
+        type_print(f"Loading paragraphs from doc {docx_path}", color=Color.BLUE)
         raw_paragraphs = self.loader.load_paragraphs(docx_path)
         include_edited_text_section = (
             cfg.run.include_edited_text_section_policy
@@ -41,43 +44,49 @@ class FeedbackPipeline:
         classified = None
         try:
             # ---- EXTRACT META DATA ----
-            classified = self.llm.extract_metadata(" ".join(raw_paragraphs), explain=self.explain)
+            with stage("Extracting metadata", color=Color.CYAN):
+                classified = self.llm.extract_metadata(" ".join(raw_paragraphs), explain=self.explain)
             self.explain.log("LLM", "Extracted essay metadata via JSON task")
             if isinstance(classified, dict):
                 self.explain.log_kv("LLM", classified)
 
             # ---- EDIT TEXT ----
+            type_print("Reformatting original text", color=Color.RED)
             edited_text, header, body_paragraphs = build_edited_text(raw_paragraphs, classified)
             if header:
                 self.explain.log_kv("DOCX", header)
             self.explain.log("DOCX", f"Body paragraphs after header removal: {len(body_paragraphs)}")
 
             # ---- GRAMMAR ERROR DETECTION -----
-            sentences = list(body_paragraphs)
-            self.explain.log("GED", f"Split into {len(sentences)} sentences")
-            ged_results = self.ged.score(sentences, batch_size=cfg.ged.batch_size, explain=self.explain)
-            self.explain.log("GED", f"Total results: {len(ged_results)}")
+            with stage("Running grammar error detection", color=Color.RED):
+                sentences = list(body_paragraphs)
+                self.explain.log("GED", f"Split into {len(sentences)} sentences")
+                ged_results = self.ged.score(sentences, batch_size=cfg.ged.batch_size, explain=self.explain)
+                self.explain.log("GED", f"Total results: {len(ged_results)}")
 
             # ---- GRAMMAR ERROR CORRECTION ----
-            error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
-            if error_idxs:
-                self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
-            max_corrections = max(0, int(cfg.run.max_llm_corrections))
-            if max_corrections > 0 and error_idxs:
-                seed = int(hashlib.md5(docx_path.name.encode("utf-8")).hexdigest()[:8], 16)
-                rng = random.Random(seed)
-                sample_count = min(max_corrections, len(error_idxs))
-                sampled_idxs = sorted(rng.sample(error_idxs, sample_count))
-                to_correct = [sentences[i] for i in sampled_idxs]
-                corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
-                for idx, new_text in zip(sampled_idxs, corrected):
-                    original = sentences[idx]
-                    self.explain.log("LLM", f"Corrected sentence {idx + 1}")
-                    self.explain.log("LLM", f"Original: {original}")
-                    self.explain.log("LLM", f"Corrected: {new_text}")
-                    sentences[idx] = new_text
-            else:
-                self.explain.log("LLM", "No corrections requested or no error sentences found")
+            with stage("Running grammar error corrections.", color=Color.CYAN):
+                error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
+                if error_idxs:
+                    self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
+                max_corrections = max(0, int(cfg.run.max_llm_corrections))
+                if max_corrections > 0 and error_idxs:
+                    type_print("Correcting...", color=Color.YELLOW)
+                    seed = int(hashlib.md5(docx_path.name.encode("utf-8")).hexdigest()[:8], 16)
+                    rng = random.Random(seed)
+                    sample_count = min(max_corrections, len(error_idxs))
+                    sampled_idxs = sorted(rng.sample(error_idxs, sample_count))
+                    to_correct = [sentences[i] for i in sampled_idxs]
+                    corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
+                    for idx, new_text in zip(sampled_idxs, corrected):
+                        original = sentences[idx]
+                        self.explain.log("LLM", f"Corrected sentence {idx + 1}")
+                        self.explain.log("LLM", f"Original: {original}")
+                        self.explain.log("LLM", f"Corrected: {new_text}")
+                        sentences[idx] = new_text
+                else:
+                    type_print("Nothing to correct... moving on.", color=Color.DIM)
+                    self.explain.log("LLM", "No corrections requested or no error sentences found")
 
             edited_body_text = " ".join(s.strip() for s in body_paragraphs if s and s.strip())
             corrected_body_text = " ".join(s.strip() for s in sentences if s and s.strip())
@@ -87,12 +96,14 @@ class FeedbackPipeline:
             # ------- FEEDBACK -------
 
             # ---- Topic Sentence ----
-            ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
-            print(f"Topic sentence feedback: {ts_feedback}")
+            with stage("Providing topic sentence feedback...", color=Color.CYAN):
+                ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
 
             # Feedback to be added once feedback has been initiated
             feedback_paragraphs = ["(Feedback not available yet.)"]
-
+            
+            # ------- BUILD DOCX -------
+            type_print("Building the word document...", color=Color.RED)
             # Build the word document to be returned to the student
             output_path = cfg.paths.output_docx_folder / f"{docx_path.stem}.docx"
             self.docx_out.build_report_with_header_and_body(
@@ -106,6 +117,7 @@ class FeedbackPipeline:
                 include_edited_text=include_edited_text_section,
             )
             self.explain.log("DOCX", f"Wrote output document: {output_path}")
+            type_print("Complete", color=Color.GREEN)
         except Exception as exc:
             error = exc
             self.explain.log("ERROR", f"LLM JSON extraction failed: {type(exc).__name__}: {exc}")
