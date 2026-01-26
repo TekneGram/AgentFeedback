@@ -75,6 +75,9 @@ On first run, a large language model (Llama‑3.1‑8B‑Instruct GGUF) will be 
 
 ## Architecture (4C in ASCII)
 
+![Infographic](architecture/infographic.png)
+![Infographic (JP)](architecture/infographic_jp.png)
+
 Code diagram (Mermaid): `architecture/04-code.md`
 
 ![Code diagram](architecture/code.png)
