@@ -43,8 +43,8 @@ def build_settings() -> AppConfig:
         llama_server_url="http://127.0.0.1:8080/v1/chat/completions",
         llama_server_model = "llama",
         llama_server_bin_path=".appdata/bin/llama-server",
-        hf_repo_id="tensorblock/Llama-3.2-8B-Instruct-GGUF",
-        hf_filename="Llama-3.2-8B-Instruct-Q4_K_M.gguf"
+        hf_repo_id="bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+        hf_filename="Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
     )
 
     return AppConfig(paths=paths, run=run, ged=ged, llama=llama)
