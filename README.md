@@ -22,6 +22,26 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### 4) Add llama.cpp (required for llama-server build)
+The app expects the `llama.cpp` repo to be available as a subfolder of `third_party/` so it can build `llama-server` locally.
+
+Create the folder and clone the repo:
+```bash
+mkdir -p third_party
+git clone https://github.com/ggerganov/llama.cpp third_party/llama.cpp
+```
+
+Build `llama-server` (macOS/Linux):
+```bash
+cmake -S third_party/llama.cpp -B .appdata/build/llama.cpp -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+cmake --build .appdata/build/llama.cpp --config Release --target llama-server -j
+```
+
+On macOS, you may need Xcode Command Line Tools:
+```bash
+xcode-select --install
+```
+
 ### 4) Download spaCy model (required for paragraph analysis)
 ```bash
 python -m spacy download en_core_web_sm
