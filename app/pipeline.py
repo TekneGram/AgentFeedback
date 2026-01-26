@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 from text.sentence_splitter import split_paragraphs
+from text.header_extractor import build_edited_text
 
 # I do not create DocxLoader objects
 # They are injected into this pipeline so I only need to type check it.
@@ -50,8 +51,11 @@ class FeedbackPipeline:
             ged_results = self.ged.score(sentences, batch_size=cfg.ged.batch_size, explain=self.explain)
             self.explain.log("GED", f"Total results: {len(ged_results)}")
 
-            # Rewrite as a single paragraph.
-            edited_text = " ".join(raw_paragraphs).strip()
+            # Rewrite: keep header fields on their own lines, then join the body.
+            edited_text, header, body_paragraphs = build_edited_text(raw_paragraphs, classified)
+            if header:
+                self.explain.log_kv("DOCX", header)
+            self.explain.log("DOCX", f"Body paragraphs after header removal: {len(body_paragraphs)}")
 
             # Corrected text to be updated once corrections are available.
             corrected_text = edited_text
