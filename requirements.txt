@@ -1,0 +1,7 @@
+docx
+huggingface_hub
+platformdirs
+requests
+spacy
+torch
+transformers
