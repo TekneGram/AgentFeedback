@@ -40,25 +40,25 @@ class FeedbackPipeline:
         error: Exception | None = None
         classified = None
         try:
-            # Extract name, student number and essay title (metadata) from essay
+            # ---- EXTRACT META DATA ----
             classified = self.llm.extract_metadata(" ".join(raw_paragraphs), explain=self.explain)
-            self.explain.log("LLM - metadata extraction", "Extracted essay metadata via JSON task")
+            self.explain.log("LLM", "Extracted essay metadata via JSON task")
             if isinstance(classified, dict):
                 self.explain.log_kv("LLM", classified)
 
-            # Rewrite: keep header fields on their own lines, then join the body.
+            # ---- EDIT TEXT ----
             edited_text, header, body_paragraphs = build_edited_text(raw_paragraphs, classified)
             if header:
                 self.explain.log_kv("DOCX", header)
             self.explain.log("DOCX", f"Body paragraphs after header removal: {len(body_paragraphs)}")
 
-            # Check for grammar errors (use processed body text)
+            # ---- GRAMMAR ERROR DETECTION -----
             sentences = list(body_paragraphs)
             self.explain.log("GED", f"Split into {len(sentences)} sentences")
             ged_results = self.ged.score(sentences, batch_size=cfg.ged.batch_size, explain=self.explain)
             self.explain.log("GED", f"Total results: {len(ged_results)}")
 
-            # Correct sentences where GED found grammar errors
+            # ---- GRAMMAR ERROR CORRECTION ----
             error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
             if error_idxs:
                 self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
@@ -72,17 +72,23 @@ class FeedbackPipeline:
                 corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
                 for idx, new_text in zip(sampled_idxs, corrected):
                     original = sentences[idx]
-                self.explain.log("LLM - grammar correction", f"Corrected sentence {idx + 1}")
-                self.explain.log("LLM - grammar correction", f"Original: {original}")
-                self.explain.log("LLM - grammar correction", f"Corrected: {new_text}")
+                    self.explain.log("LLM", f"Corrected sentence {idx + 1}")
+                    self.explain.log("LLM", f"Original: {original}")
+                    self.explain.log("LLM", f"Corrected: {new_text}")
                     sentences[idx] = new_text
             else:
-                self.explain.log("LLM - grammar correction", "No corrections requested or no error sentences found")
+                self.explain.log("LLM", "No corrections requested or no error sentences found")
 
             edited_body_text = " ".join(s.strip() for s in body_paragraphs if s and s.strip())
             corrected_body_text = " ".join(s.strip() for s in sentences if s and s.strip())
             corrected_text = build_text_from_header_and_body(header, sentences)
             header_lines = build_paragraphs_from_header_and_body(header, [])[:3]
+
+            # ------- FEEDBACK -------
+
+            # ---- Topic Sentence ----
+            ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
+            print(f"Topic sentence feedback: {ts_feedback}")
 
             # Feedback to be added once feedback has been initiated
             feedback_paragraphs = ["(Feedback not available yet.)"]

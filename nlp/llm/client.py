@@ -27,10 +27,10 @@ class OpenAICompatChatClient:
             raise RuntimeError(f"llama-server HTTP {r.status_code}: {r.text[:1000]}")
         return r
 
-    def chat(self, system: str, user: str, max_tokens: int) -> str:
+    def chat(self, system: str, user: str, max_tokens: int, temperature: Optional[float] = None) -> str:
         payload = {
             "model": self.model_name,
-            "temperature": self.temperature,
+            "temperature": self.temperature if temperature is None else temperature,
             "max_tokens": max_tokens,
             "messages": [
                 {"role": "system", "content": system},

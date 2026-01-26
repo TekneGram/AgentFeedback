@@ -2,10 +2,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
 
+import spacy
+import json
+
 from nlp.llm.client import OpenAICompatChatClient
 from nlp.llm.tasks.test_task import answer, stream_answer
 from nlp.llm.tasks.metadata_extraction import extract_metadata
 from nlp.llm.tasks.grammar_correction import correct_sentences as correct_grammar_sentences
+from nlp.llm.tasks.paragraph_analysis import generate_topic_sentence, analyze_topic_sentence
 
 if TYPE_CHECKING:
     from services.explainability import ExplainabilityRecorder
@@ -49,3 +53,18 @@ class LlmService:
         if explain is not None:
             explain.log("LLM - grammar correction", f"Correction output count: {len(out)}")
         return out
+    
+    def analyze_topic_sentence(self, edited_sentences: str, explain: "ExplainabilityRecorder | None" = None) -> Any:
+        nlp = spacy.load("en_core_web_sm")
+        doc = nlp(edited_sentences)
+        sentences = [sent.text for sent in doc.sents]
+        edited_sentences_minus_topic = " ".join(sentences[1:])
+        learner_topic_sentence = sentences[0]
+        print(learner_topic_sentence)
+        suggested_topic_sentence = generate_topic_sentence(self.client, edited_sentences_minus_topic, max_tokens=1024, temperature=0.5)
+        if explain is not None:
+            explain.log("LLM - topic sentence analysis", f"Generate suggested sentence: {suggested_topic_sentence}")
+        feedback = analyze_topic_sentence(self.client, edited_sentences, learner_topic_sentence, suggested_topic_sentence, max_tokens=1024)
+        if explain is not None:
+            explain.log("LLM - topic sentence analysis", f"Provide feedback: {feedback}")
+        return feedback
