@@ -23,8 +23,11 @@ class FeedbackPipeline:
 
     def run_on_file(self, docx_path: Path, cfg) -> None:
         raw_paragraphs = self.loader.load_paragraphs(docx_path)
+        print(raw_paragraphs)
         # Pre-process the paragraphs
+        classified = self.llm.test_json(" ".join(raw_paragraphs))
+        print(classified)
 
         # Score sentences for ged
-        ged_results = self.ged.score(raw_paragraphs, batch_size=cfg.ged.batch_size)
-        print(ged_results)
+        # ged_results = self.ged.score(raw_paragraphs, batch_size=cfg.ged.batch_size)
+        # print(ged_results)

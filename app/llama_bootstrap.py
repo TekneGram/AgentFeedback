@@ -8,6 +8,20 @@ from platformdirs import user_data_dir
 from shutil import which, copy2
 from helpers.llama_build import build_llama_server
 
+def _get_app_base_dir(app_name: str, org: str) -> Path:
+    # Explicit override for dev + Electron later
+    override = os.getenv("APP_DATA_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+    
+    # Dev mode -> store inside the repo
+    if os.getenv("DEV_MODE", "").strip() in {"1", "true", "True", "yes", "YES"}:
+        project_root = Path(__file__).resolve().parents[1]
+        return (project_root / ".appdata").resolve()
+    
+    # Prod mode -> OS-standard user data dir
+    return Path(user_data_dir(app_name, org)).resolve()
+
 def ensure_gguf(cfg, models_dir: Path) -> Path:
     models_dir.mkdir(parents=True, exist_ok=True)
 
@@ -39,20 +53,6 @@ def ensure_gguf(cfg, models_dir: Path) -> Path:
 
     return local_target
 
-def _get_app_base_dir(app_name: str, org: str) -> Path:
-    # Explicit override for dev + Electron later
-    override = os.getenv("APP_DATA_DIR")
-    if override:
-        return Path(override).expanduser().resolve()
-    
-    # Dev mode -> store inside the repo
-    if os.getenv("DEV_MODE", "").strip() in {"1", "true", "True", "yes", "YES"}:
-        project_root = Path(__file__).resolve().parents[1]
-        return (project_root / ".appdata").resolve()
-    
-    # Prod mode -> OS-standard user data dir
-    return Path(user_data_dir(app_name, org)).resolve()
-
 def ensure_llama_server_bin(app_cfg) -> Path:
     server = _get_app_base_dir("EssayLens", "TekneGram") / "bin" / ("llama-server.exe" if sys.platform == "win32" else "llama-server")
     if server.exists() and server.stat().st_size > 0:
@@ -62,7 +62,7 @@ def ensure_llama_server_bin(app_cfg) -> Path:
 
 
 def bootstrap_llama(app_cfg):
-    # Decide an app data dir (Electron later can pass its own) this:contentReference[oaicite:15]{index=15}Path(user_data_dir("YourAppName", "YourOrg")).resolve()
+    # Decide an app data dir (Electron later can pass its own)
     base = _get_app_base_dir("EssayLens", "TekneGram")
     print(base)
     models_dir = base / "models"
