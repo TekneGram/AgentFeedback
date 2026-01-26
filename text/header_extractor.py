@@ -64,11 +64,15 @@ def build_edited_text(
     classified: Any,
 ) -> Tuple[str, Dict[str, str], List[str]]:
     header, body = split_header_and_body(raw_paragraphs, classified)
+    edited_text = build_text_from_header_and_body(header, body)
+    return edited_text, header, body
+
+
+def build_text_from_header_and_body(header: Dict[str, str], body_sentences: List[str]) -> str:
     header_lines: List[str] = []
     header_lines.append(f"Name: {header.get('student_name', '')}")
     header_lines.append(f"Number: {header.get('student_number', '')}")
     header_lines.append(f"Title: {header.get('essay_title', '')}")
-    body_text = " ".join(s.strip() for s in body if s and s.strip())
+    body_text = " ".join(s.strip() for s in body_sentences if s and s.strip())
     parts = header_lines + ([body_text] if body_text else [])
-    edited_text = "\n\n".join(parts)
-    return edited_text, header, body
+    return "\n\n".join(parts)

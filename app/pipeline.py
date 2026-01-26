@@ -2,8 +2,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-from text.sentence_splitter import split_paragraphs
-from text.header_extractor import build_edited_text
+import hashlib
+import random
+from text.header_extractor import build_edited_text, build_text_from_header_and_body
 
 # I do not create DocxLoader objects
 # They are injected into this pipeline so I only need to type check it.
@@ -45,20 +46,40 @@ class FeedbackPipeline:
             if isinstance(classified, dict):
                 self.explain.log_kv("LLM", classified)
 
-            # Check for grammar errors
-            sentences = split_paragraphs(raw_paragraphs)
-            self.explain.log("GED", f"Split into {len(sentences)} sentences")
-            ged_results = self.ged.score(sentences, batch_size=cfg.ged.batch_size, explain=self.explain)
-            self.explain.log("GED", f"Total results: {len(ged_results)}")
-
             # Rewrite: keep header fields on their own lines, then join the body.
             edited_text, header, body_paragraphs = build_edited_text(raw_paragraphs, classified)
             if header:
                 self.explain.log_kv("DOCX", header)
             self.explain.log("DOCX", f"Body paragraphs after header removal: {len(body_paragraphs)}")
 
-            # Corrected text to be updated once corrections are available.
-            corrected_text = edited_text
+            # Check for grammar errors (use processed body text)
+            sentences = list(body_paragraphs)
+            self.explain.log("GED", f"Split into {len(sentences)} sentences")
+            ged_results = self.ged.score(sentences, batch_size=cfg.ged.batch_size, explain=self.explain)
+            self.explain.log("GED", f"Total results: {len(ged_results)}")
+
+            # Correct sentences where GED found grammar errors
+            error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
+            if error_idxs:
+                self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
+            max_corrections = max(0, int(cfg.run.max_llm_corrections))
+            if max_corrections > 0 and error_idxs:
+                seed = int(hashlib.md5(docx_path.name.encode("utf-8")).hexdigest()[:8], 16)
+                rng = random.Random(seed)
+                sample_count = min(max_corrections, len(error_idxs))
+                sampled_idxs = sorted(rng.sample(error_idxs, sample_count))
+                to_correct = [sentences[i] for i in sampled_idxs]
+                corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
+                for idx, new_text in zip(sampled_idxs, corrected):
+                    original = sentences[idx]
+                    self.explain.log("LLM", f"Corrected sentence {idx + 1}")
+                    self.explain.log("LLM", f"Original: {original}")
+                    self.explain.log("LLM", f"Corrected: {new_text}")
+                    sentences[idx] = new_text
+            else:
+                self.explain.log("LLM", "No corrections requested or no error sentences found")
+
+            corrected_text = build_text_from_header_and_body(header, sentences)
 
             # Feedback to be added once feedback has been initiated
             feedback_paragraphs = ["(Feedback not available yet.)"]

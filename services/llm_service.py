@@ -4,6 +4,7 @@ from typing import Any, TYPE_CHECKING
 
 from nlp.llm.client import OpenAICompatChatClient
 from nlp.llm.tasks.test_task import answer, stream_answer, test_json
+from nlp.llm.tasks.grammar_correction import correct_sentences as correct_grammar_sentences
 
 if TYPE_CHECKING:
     from services.explainability import ExplainabilityRecorder
@@ -38,4 +39,12 @@ class LlmService:
                 explain.log("LLM", f"JSON keys: {', '.join(sorted(out.keys()))}")
             else:
                 explain.log("LLM", f"JSON type: {type(out).__name__}")
+        return out
+
+    def correct_sentences(self, sentences: list[str], explain: "ExplainabilityRecorder | None" = None) -> list[str]:
+        if explain is not None:
+            explain.log("LLM", f"Correction sentence count: {len(sentences)}")
+        out = correct_grammar_sentences(self.client, sentences, max_tokens=self.max_tokens_sentence)
+        if explain is not None:
+            explain.log("LLM", f"Correction output count: {len(out)}")
         return out
