@@ -209,3 +209,88 @@ class TrackChangesEditor:
                     p.add_run(text)
 
         out_doc.save(output_path)
+
+    def build_report_with_header_and_body(
+        self,
+        output_path: str,
+        original_paragraphs: List[str],
+        edited_text: str,
+        header_lines: List[str],
+        edited_body_text: str,
+        corrected_body_text: str,
+        feedback_heading: str = "Language Feedback",
+        feedback_paragraphs: Optional[List[str]] = None,
+        feedback_as_tracked_insertion: bool = False,
+        add_page_break_before_feedback: bool = True,
+        include_edited_text_section: bool = True,
+    ) -> None:
+        self.reset_rev_ids()
+
+        out_doc = Document()
+        self.enable_track_revisions(out_doc)
+
+        def add_h1(title: str) -> None:
+            p = out_doc.add_paragraph()
+            try:
+                p.style = "Heading 1"
+            except Exception:
+                pass
+            p.add_run(title)
+
+        # ORIGINAL TEXT (raw)
+        add_h1("ORIGINAL TEXT")
+        if original_paragraphs:
+            for ptxt in original_paragraphs:
+                out_doc.add_paragraph(ptxt or "")
+        else:
+            out_doc.add_paragraph("")
+
+        out_doc.add_page_break()
+
+        # EDITED TEXT (optional)
+        if include_edited_text_section:
+            add_h1("EDITED TEXT")
+            out_doc.add_paragraph((edited_text or "").strip())
+            out_doc.add_page_break()
+
+        # CORRECTED TEXT (header lines + tracked diff on body)
+        add_h1("CORRECTED TEXT")
+        for line in header_lines:
+            out_doc.add_paragraph(line or "")
+
+        diff_p = out_doc.add_paragraph()
+        self.apply_sentence_aligned_diff(
+            diff_p,
+            (edited_body_text or "").strip(),
+            (corrected_body_text or "").strip(),
+        )
+
+        # Feedback section
+        if feedback_paragraphs:
+            if add_page_break_before_feedback:
+                out_doc.add_page_break()
+
+            add_h1(feedback_heading)
+
+            for line in feedback_paragraphs:
+                line = (line or "").rstrip()
+                if not line.strip():
+                    out_doc.add_paragraph("")
+                    continue
+
+                is_h2 = line.startswith("## ")
+                text = line[3:].strip() if is_h2 else line.strip()
+
+                p = out_doc.add_paragraph()
+                if is_h2:
+                    try:
+                        p.style = "Heading 2"
+                    except Exception:
+                        pass
+
+                if feedback_as_tracked_insertion:
+                    self.add_tracked_insertion(p, text)
+                else:
+                    p.add_run(text)
+
+        out_doc.save(output_path)

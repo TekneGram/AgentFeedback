@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 import hashlib
 import random
-from text.header_extractor import build_edited_text, build_text_from_header_and_body
+from text.header_extractor import build_edited_text, build_text_from_header_and_body, build_paragraphs_from_header_and_body
 
 # I do not create DocxLoader objects
 # They are injected into this pipeline so I only need to type check it.
@@ -79,19 +79,23 @@ class FeedbackPipeline:
             else:
                 self.explain.log("LLM", "No corrections requested or no error sentences found")
 
+            edited_body_text = " ".join(s.strip() for s in body_paragraphs if s and s.strip())
+            corrected_body_text = " ".join(s.strip() for s in sentences if s and s.strip())
             corrected_text = build_text_from_header_and_body(header, sentences)
+            header_lines = build_paragraphs_from_header_and_body(header, [])[:3]
 
             # Feedback to be added once feedback has been initiated
             feedback_paragraphs = ["(Feedback not available yet.)"]
 
             # Build the word document to be returned to the student
             output_path = cfg.paths.output_docx_folder / f"{docx_path.stem}.docx"
-            self.docx_out.build_report(
-                input_path=docx_path,
+            self.docx_out.build_report_with_header_and_body(
                 output_path=output_path,
                 original_paragraphs=raw_paragraphs,
                 edited_text=edited_text,
-                corrected_text=corrected_text,
+                header_lines=header_lines,
+                edited_body_text=edited_body_text,
+                corrected_body_text=corrected_body_text,
                 feedback_paragraphs=feedback_paragraphs,
                 include_edited_text=include_edited_text_section,
             )

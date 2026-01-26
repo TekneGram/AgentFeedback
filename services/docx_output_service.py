@@ -37,3 +37,30 @@ class DocxOutputService:
             include_edited_text_section=include_edited_text,
         )
         return output_path
+
+    def build_report_with_header_and_body(
+        self,
+        *,
+        output_path: Path,
+        original_paragraphs: List[str],
+        edited_text: str,
+        header_lines: List[str],
+        edited_body_text: str,
+        corrected_body_text: str,
+        feedback_paragraphs: Optional[List[str]] = None,
+        include_edited_text: bool = True,
+    ) -> Path:
+        self._editor.build_report_with_header_and_body(
+            output_path=str(output_path),
+            original_paragraphs=original_paragraphs,
+            edited_text=edited_text,
+            header_lines=header_lines,
+            edited_body_text=edited_body_text,
+            corrected_body_text=corrected_body_text,
+            feedback_heading="Language Feedback",
+            feedback_paragraphs=feedback_paragraphs,
+            feedback_as_tracked_insertion=False,
+            add_page_break_before_feedback=True,
+            include_edited_text_section=include_edited_text,
+        )
+        return output_path

@@ -74,5 +74,17 @@ def build_text_from_header_and_body(header: Dict[str, str], body_sentences: List
     header_lines.append(f"Number: {header.get('student_number', '')}")
     header_lines.append(f"Title: {header.get('essay_title', '')}")
     body_text = " ".join(s.strip() for s in body_sentences if s and s.strip())
-    parts = header_lines + ([body_text] if body_text else [])
+    parts = header_lines + [body_text]
     return "\n\n".join(parts)
+
+
+def build_paragraphs_from_header_and_body(
+    header: Dict[str, str],
+    body_sentences: List[str],
+) -> List[str]:
+    header_lines: List[str] = []
+    header_lines.append(f"Name: {header.get('student_name', '')}")
+    header_lines.append(f"Number: {header.get('student_number', '')}")
+    header_lines.append(f"Title: {header.get('essay_title', '')}")
+    body_text = " ".join(s.strip() for s in body_sentences if s and s.strip())
+    return header_lines + [body_text]
