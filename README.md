@@ -7,7 +7,7 @@ This app processes student essays and paragraphs, extracts metadata, runs GED (g
 
 ### 1) Clone the repo
 ```bash
-git clone <YOUR_GITHUB_REPO_URL>
+git clone https://github.com/TekneGram/AgentFeedback.git
 cd AgentFeedback
 ```
 
