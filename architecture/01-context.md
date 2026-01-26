@@ -6,7 +6,7 @@ C4Context
 
     Person(user, "Teacher or TA", "Runs the feedback tool on student essays")
 
-    System(app, "Essay Feedback App", "Processes essays, runs GED and LLM analysis")
+    System(app, "Essay Feedback App", "Processes essays, runs GED and LLM analysis, writes explainability")
 
     System_Ext(llama, "llama-server", "Local LLM server (llama.cpp)")
     System_Ext(hf, "Hugging Face Hub", "Model hosting for GGUF downloads")

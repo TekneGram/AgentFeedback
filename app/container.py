@@ -2,12 +2,14 @@ from inout.docx_loader import DocxLoader
 from nlp.ged_bert import GedBertDetector
 from services.ged_service import GedService
 from services.llm_service import LlmService
+from services.explainability import ExplainabilityRecorder
 
 from nlp.llm.server_process import LlamaServerProcess
 from nlp.llm.client import OpenAICompatChatClient
 
 from pathlib import Path
 import atexit
+from inout.explainability_writer import ExplainabilityWriter
 
 def _resolve_path(p: str, project_root: Path) -> Path:
     pp = Path(p).expanduser()
@@ -50,6 +52,12 @@ def build_container(cfg):
         temperature=0.0
     )
     llm_service = LlmService(client=client)
+    explainability = ExplainabilityRecorder.new(
+        run_cfg=cfg.run,
+        ged_cfg=cfg.ged,
+        llama_cfg=cfg.llama,
+    )
+    explain_writer = ExplainabilityWriter(cfg.paths.explained_txt_folder)
 
     return {
         "loader": loader,
@@ -57,4 +65,6 @@ def build_container(cfg):
         "cfg": cfg,
         "llm": llm_service,
         "llama-server": server_proc,
+        "explain": explainability,
+        "explain_writer": explain_writer,
     }

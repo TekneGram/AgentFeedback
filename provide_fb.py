@@ -19,7 +19,9 @@ def main():
     pipeline = FeedbackPipeline(
         loader=deps["loader"],
         ged=deps["ged"],
-        llm=deps["llm"]
+        llm=deps["llm"],
+        explain=deps["explain"],
+        explain_writer=deps["explain_writer"]
     )
 
     # # TESTS

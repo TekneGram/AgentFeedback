@@ -18,6 +18,8 @@ C4Component
         Component(docx, "Docx Loader", "Python", "Loads paragraphs from DOCX")
         Component(ged, "GED Service", "Python", "Runs GED model over text")
         Component(llm, "LLM Service", "Python", "Calls LLM client tasks")
+        Component(explain, "Explainability Recorder", "Python", "Collects explainability lines")
+        Component(explain_writer, "Explainability Writer", "Python", "Writes explainability text files")
     }
 
     Container_Boundary(llm_layer, "LLM Client Layer") {
@@ -42,6 +44,8 @@ C4Component
     Rel(pipeline_core, docx, "Loads paragraphs")
     Rel(pipeline_core, ged, "Scores text")
     Rel(pipeline_core, llm, "Calls LLM")
+    Rel(pipeline_core, explain, "Records explainability")
+    Rel(explain, explain_writer, "Emits lines")
 
     Rel(llm, tasks, "Uses")
     Rel(tasks, client, "Sends prompts")

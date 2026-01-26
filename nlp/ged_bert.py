@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, AutoModelForTokenClassification
 class GedSentenceResult:
     sentence: str
     has_error: bool
+    error_tokens: List[str]
 
 class GedBertDetector:
     """
@@ -59,14 +60,17 @@ class GedBertDetector:
 
             for b_idx, sent in enumerate(batch):
                 has_error = False
+                error_tokens: List[str] = []
                 for t_idx in range(preds.shape[1]):
                     if attn[b_idx, t_idx].item() == 0:
                         continue
-                    if int(input_ids[b_idx, t_idx].item()) in special_ids:
+                    token_id = int(input_ids[b_idx, t_idx].item())
+                    if token_id in special_ids:
                         continue
                     if int(preds[b_idx, t_idx].item()) == self.ERROR_ID:
                         has_error = True
-                        break
-                results.append(GedSentenceResult(sentence=sent, has_error=has_error))
-            return results
+                        token = self.tokenizer.convert_ids_to_tokens([token_id])[0]
+                        error_tokens.append(token)
+                results.append(GedSentenceResult(sentence=sent, has_error=has_error, error_tokens=error_tokens))
+        return results
         
