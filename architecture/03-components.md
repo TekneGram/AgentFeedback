@@ -18,6 +18,7 @@ C4Component
         Component(docx, "Docx Loader", "Python", "Loads paragraphs from DOCX")
         Component(ged, "GED Service", "Python", "Runs GED model over text")
         Component(llm, "LLM Service", "Python", "Calls LLM client tasks")
+        Component(docx_out, "DOCX Output Service", "Python", "Creates tracked-changes DOCX output")
         Component(explain, "Explainability Recorder", "Python", "Collects explainability lines")
         Component(explain_writer, "Explainability Writer", "Python", "Writes explainability text files")
     }
@@ -44,6 +45,7 @@ C4Component
     Rel(pipeline_core, docx, "Loads paragraphs")
     Rel(pipeline_core, ged, "Scores text")
     Rel(pipeline_core, llm, "Calls LLM")
+    Rel(pipeline_core, docx_out, "Generates DOCX output")
     Rel(pipeline_core, explain, "Records explainability")
     Rel(explain, explain_writer, "Emits lines")
 

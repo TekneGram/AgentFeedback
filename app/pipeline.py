@@ -41,8 +41,8 @@ class FeedbackPipeline:
         classified = None
         try:
             # Extract name, student number and essay title (metadata) from essay
-            classified = self.llm.test_json(" ".join(raw_paragraphs), explain=self.explain)
-            self.explain.log("LLM", "Extracted essay metadata via JSON task")
+            classified = self.llm.extract_metadata(" ".join(raw_paragraphs), explain=self.explain)
+            self.explain.log("LLM - metadata extraction", "Extracted essay metadata via JSON task")
             if isinstance(classified, dict):
                 self.explain.log_kv("LLM", classified)
 
@@ -72,12 +72,12 @@ class FeedbackPipeline:
                 corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
                 for idx, new_text in zip(sampled_idxs, corrected):
                     original = sentences[idx]
-                    self.explain.log("LLM", f"Corrected sentence {idx + 1}")
-                    self.explain.log("LLM", f"Original: {original}")
-                    self.explain.log("LLM", f"Corrected: {new_text}")
+                self.explain.log("LLM - grammar correction", f"Corrected sentence {idx + 1}")
+                self.explain.log("LLM - grammar correction", f"Original: {original}")
+                self.explain.log("LLM - grammar correction", f"Corrected: {new_text}")
                     sentences[idx] = new_text
             else:
-                self.explain.log("LLM", "No corrections requested or no error sentences found")
+                self.explain.log("LLM - grammar correction", "No corrections requested or no error sentences found")
 
             edited_body_text = " ".join(s.strip() for s in body_paragraphs if s and s.strip())
             corrected_body_text = " ".join(s.strip() for s in sentences if s and s.strip())
