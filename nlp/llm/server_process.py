@@ -50,10 +50,20 @@ class LlamaServerProcess:
             text=True,
         )
 
-        # Wait until OpenAI-compatible endpoint responds
+        # Wait until OpenAI-compatible chat endpoint responds (model loaded)
         deadline = time.time() + wait_s
         url = f"http://{self.host}:{self.port}/health"
-        chat_url = f"http://{self.host}:{self.port}/v1/models"
+        models_url = f"http://{self.host}:{self.port}/v1/models"
+        chat_url = f"http://{self.host}:{self.port}/v1/chat/completions"
+        chat_payload = {
+            "model": "llama",
+            "temperature": 0.0,
+            "max_tokens": 1,
+            "messages": [
+                {"role": "system", "content": "You are a readiness probe."},
+                {"role": "user", "content": "ping"},
+            ],
+        }
 
         while time.time() < deadline:
             if self._proc.poll() is not None:
@@ -63,18 +73,26 @@ class LlamaServerProcess:
                     f"stdout:\n{out}\n\nstderr:\n{err}"
                 )
             
-            # Try health, then models
+            # Try chat first; it only succeeds after model load
             try:
-                r = requests.get(url, timeout=1)
+                r = requests.post(chat_url, json=chat_payload, timeout=1)
                 if r.status_code == 200:
                     return
             except Exception:
                 pass
 
+            # Fallback: health/models can be up before the model is ready
             try:
-                r = requests.get(chat_url, timeout=1)
+                r = requests.get(url, timeout=1)
                 if r.status_code == 200:
-                    return
+                    pass
+            except Exception:
+                pass
+
+            try:
+                r = requests.get(models_url, timeout=1)
+                if r.status_code == 200:
+                    pass
             except Exception:
                 pass
 

@@ -7,6 +7,7 @@ from nlp.llm.server_process import LlamaServerProcess
 from nlp.llm.client import OpenAICompatChatClient
 
 from pathlib import Path
+import atexit
 
 def _resolve_path(p: str, project_root: Path) -> Path:
     pp = Path(p).expanduser()
@@ -40,6 +41,7 @@ def build_container(cfg):
             n_threads=None
         )
         server_proc.start()
+        atexit.register(server_proc.stop)
 
     client = OpenAICompatChatClient(
         chat_url=cfg.llama.llama_server_url,
