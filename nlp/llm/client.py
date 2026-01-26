@@ -102,5 +102,4 @@ class OpenAICompatChatClient:
         }
         r = self._post_json(self.chat_url, payload)
         content = (r.json()["choices"][0]["message"]["content"] or "").strip()
-        print(content)
         return json.loads(content)

@@ -3,7 +3,7 @@ from app.container import build_container
 from app.pipeline import FeedbackPipeline
 from app.llama_bootstrap import bootstrap_llama
 
-from utils.terminal_ui import Color, type_print
+from utils.terminal_ui import Color, type_print, stage
 
 def main():
     # Build config (paths/run/ged/llama)
@@ -16,8 +16,9 @@ def main():
     print(f"This is the config: {app_cfg}")
 
     # Build all services/objects via a container
-    type_print("Building all the services and loading the LLM", color=Color.BLUE)
-    deps = build_container(app_cfg)
+    type_print("Loading a large language model. This will take a large amount of your system's memory. Closing unused apps and browser windows can help.", color=Color.RED)
+    with stage("Building all the services and loading a large language model.", color=Color.BLUE):
+        deps = build_container(app_cfg)
 
     # Construct the pipeline and inject the dependencies as kwargs (named arguments)
     # pipeline = FeedbackPipeline(**deps)

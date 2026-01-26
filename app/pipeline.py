@@ -51,8 +51,8 @@ class FeedbackPipeline:
                 self.explain.log_kv("LLM", classified)
 
             # ---- EDIT TEXT ----
-            type_print("Reformatting original text", color=Color.RED)
-            edited_text, header, body_paragraphs = build_edited_text(raw_paragraphs, classified)
+            with stage("Reformatting original text", color=Color.RED):
+                edited_text, header, body_paragraphs = build_edited_text(raw_paragraphs, classified)
             if header:
                 self.explain.log_kv("DOCX", header)
             self.explain.log("DOCX", f"Body paragraphs after header removal: {len(body_paragraphs)}")
@@ -71,7 +71,6 @@ class FeedbackPipeline:
                     self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
                 max_corrections = max(0, int(cfg.run.max_llm_corrections))
                 if max_corrections > 0 and error_idxs:
-                    type_print("Correcting...", color=Color.YELLOW)
                     seed = int(hashlib.md5(docx_path.name.encode("utf-8")).hexdigest()[:8], 16)
                     rng = random.Random(seed)
                     sample_count = min(max_corrections, len(error_idxs))
@@ -85,7 +84,6 @@ class FeedbackPipeline:
                         self.explain.log("LLM", f"Corrected: {new_text}")
                         sentences[idx] = new_text
                 else:
-                    type_print("Nothing to correct... moving on.", color=Color.DIM)
                     self.explain.log("LLM", "No corrections requested or no error sentences found")
 
             edited_body_text = " ".join(s.strip() for s in body_paragraphs if s and s.strip())

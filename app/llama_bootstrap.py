@@ -64,12 +64,10 @@ def ensure_llama_server_bin(app_cfg) -> Path:
 def bootstrap_llama(app_cfg):
     # Decide an app data dir (Electron later can pass its own)
     base = _get_app_base_dir("EssayLens", "TekneGram")
-    print(base)
     models_dir = base / "models"
 
     gguf_path = ensure_gguf(app_cfg, models_dir)
     server_bin = ensure_llama_server_bin(app_cfg)
-    print(server_bin)
 
     new_llama = replace(
         app_cfg.llama,
