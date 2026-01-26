@@ -1,7 +1,7 @@
 # Essay Feedback App
 
 ## Purpose
-This app processes student essays, extracts metadata, runs GED (grammar error detection), applies selective LLM grammar corrections, and generates a tracked‑changes DOCX plus explainability reports.
+This app processes student essays and paragraphs, extracts metadata, runs GED (grammar error detection), applies selective LLM grammar corrections, generates a tracked‑changes DOCX with language feedback appended, and emits explainability reports. The app's offline NLP pipeline guarantees complete student privacy, saves teachers time with assessments, and provides explainability to help understand the NLP outputs. Teachers can and should edit any feedback generated in the individual student DOCX files.
 
 ## Development Setup
 
