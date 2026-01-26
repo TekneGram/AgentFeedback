@@ -21,7 +21,8 @@ def main():
         ged=deps["ged"],
         llm=deps["llm"],
         explain=deps["explain"],
-        explain_writer=deps["explain_writer"]
+        explain_writer=deps["explain_writer"],
+        docx_out=deps["docx_out"],
     )
 
     # # TESTS

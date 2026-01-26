@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from services.llm_service import LlmService
     from services.explainability import ExplainabilityRecorder
     from inout.explainability_writer import ExplainabilityWriter
+    from services.docx_output_service import DocxOutputService
 
 @dataclass
 class FeedbackPipeline:
@@ -20,6 +21,7 @@ class FeedbackPipeline:
     llm: "LlmService"
     explain: "ExplainabilityRecorder"
     explain_writer: "ExplainabilityWriter"
+    docx_out: "DocxOutputService"
 
     def run_on_file(self, docx_path: Path, cfg) -> None:
         raw_paragraphs = self.loader.load_paragraphs(docx_path)
@@ -36,15 +38,39 @@ class FeedbackPipeline:
         error: Exception | None = None
         classified = None
         try:
+            # Extract name, student number and essay title (metadata) from essay
             classified = self.llm.test_json(" ".join(raw_paragraphs), explain=self.explain)
             self.explain.log("LLM", "Extracted essay metadata via JSON task")
             if isinstance(classified, dict):
                 self.explain.log_kv("LLM", classified)
 
+            # Check for grammar errors
             sentences = split_paragraphs(raw_paragraphs)
             self.explain.log("GED", f"Split into {len(sentences)} sentences")
             ged_results = self.ged.score(sentences, batch_size=cfg.ged.batch_size, explain=self.explain)
             self.explain.log("GED", f"Total results: {len(ged_results)}")
+
+            # Rewrite as a single paragraph.
+            edited_text = " ".join(raw_paragraphs).strip()
+
+            # Corrected text to be updated once corrections are available.
+            corrected_text = edited_text
+
+            # Feedback to be added once feedback has been initiated
+            feedback_paragraphs = ["(Feedback not available yet.)"]
+
+            # Build the word document to be returned to the student
+            output_path = cfg.paths.output_docx_folder / f"{docx_path.stem}.docx"
+            self.docx_out.build_report(
+                input_path=docx_path,
+                output_path=output_path,
+                original_paragraphs=raw_paragraphs,
+                edited_text=edited_text,
+                corrected_text=corrected_text,
+                feedback_paragraphs=feedback_paragraphs,
+                include_edited_text=include_edited_text_section,
+            )
+            self.explain.log("DOCX", f"Wrote output document: {output_path}")
         except Exception as exc:
             error = exc
             self.explain.log("ERROR", f"LLM JSON extraction failed: {type(exc).__name__}: {exc}")

@@ -3,6 +3,7 @@ from nlp.ged_bert import GedBertDetector
 from services.ged_service import GedService
 from services.llm_service import LlmService
 from services.explainability import ExplainabilityRecorder
+from services.docx_output_service import DocxOutputService
 
 from nlp.llm.server_process import LlamaServerProcess
 from nlp.llm.client import OpenAICompatChatClient
@@ -58,6 +59,7 @@ def build_container(cfg):
         llama_cfg=cfg.llama,
     )
     explain_writer = ExplainabilityWriter(cfg.paths.explained_txt_folder)
+    docx_out = DocxOutputService(author=cfg.run.author)
 
     return {
         "loader": loader,
@@ -67,4 +69,5 @@ def build_container(cfg):
         "llama-server": server_proc,
         "explain": explainability,
         "explain_writer": explain_writer,
+        "docx_out": docx_out,
     }
