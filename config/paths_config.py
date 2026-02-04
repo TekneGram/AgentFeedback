@@ -54,7 +54,8 @@ class PathsConfig:
        Raises ValueError with a helpful message if something is wrong
         """
         if not self.input_docx_folder.exists():
-            raise ValueError(f"Input folder does not exist: {self.input_docx_folder}")
+            self.input_docx_folder.mkdir(parents=True, exist_ok=True)
+            # raise ValueError(f"Input folder does not exist: {self.input_docx_folder}")
         if not self.input_docx_folder.is_dir():
             raise ValueError(f"Input path is not a directory: {self.input_docx_folder}")
         

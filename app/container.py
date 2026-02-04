@@ -34,10 +34,14 @@ def build_container(cfg):
     if cfg.llama.llama_backend == "server":
         server_bin = _resolve_path(cfg.llama.llama_server_bin_path, project_root)
         model_path = Path(cfg.llama.llama_gguf_path).expanduser().resolve()
+        mmproj_path = None
+        if cfg.llama.llama_mmproj_path:
+            mmproj_path = Path(cfg.llama.llama_mmproj_path).expanduser().resolve()
 
         server_proc = LlamaServerProcess(
             server_bin=server_bin,
             model_path=model_path,
+            mmproj_path=mmproj_path,
             host="127.0.0.1",
             port=8080,
             n_ctx=4096,

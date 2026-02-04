@@ -8,7 +8,7 @@ from platformdirs import user_data_dir
 from shutil import which, copy2
 from helpers.llama_build import build_llama_server
 
-def _get_app_base_dir(app_name: str, org: str) -> Path:
+def get_app_base_dir(app_name: str, org: str) -> Path:
     # Explicit override for dev + Electron later
     override = os.getenv("APP_DATA_DIR")
     if override:
@@ -53,8 +53,31 @@ def ensure_gguf(cfg, models_dir: Path) -> Path:
 
     return local_target
 
+def ensure_mmproj(cfg, models_dir: Path) -> Path | None:
+    if not cfg.llama.hf_mmproj_filename:
+        return None
+    if not cfg.llama.hf_repo_id:
+        raise ValueError("Need hf_repo_id + hf_mmproj_filename to download mmproj on first run.")
+
+    models_dir.mkdir(parents=True, exist_ok=True)
+    local_target = models_dir / cfg.llama.hf_mmproj_filename
+    if local_target.exists() and local_target.stat().st_size > 0:
+        return local_target
+
+    downloaded = hf_hub_download(
+        repo_id=cfg.llama.hf_repo_id,
+        filename=cfg.llama.hf_mmproj_filename,
+        revision=cfg.llama.hf_revision,
+        local_dir=str(models_dir),
+        token=True,
+    )
+    downloaded = Path(downloaded)
+    if downloaded != local_target:
+        downloaded.replace(local_target)
+    return local_target
+
 def ensure_llama_server_bin(app_cfg) -> Path:
-    server = _get_app_base_dir("EssayLens", "TekneGram") / "bin" / ("llama-server.exe" if sys.platform == "win32" else "llama-server")
+    server = get_app_base_dir("EssayLens", "TekneGram") / "bin" / ("llama-server.exe" if sys.platform == "win32" else "llama-server")
     if server.exists() and server.stat().st_size > 0:
         return server
     
@@ -63,16 +86,18 @@ def ensure_llama_server_bin(app_cfg) -> Path:
 
 def bootstrap_llama(app_cfg):
     # Decide an app data dir (Electron later can pass its own)
-    base = _get_app_base_dir("EssayLens", "TekneGram")
+    base = get_app_base_dir("EssayLens", "TekneGram")
     models_dir = base / "models"
 
     gguf_path = ensure_gguf(app_cfg, models_dir)
+    mmproj_path = ensure_mmproj(app_cfg, models_dir)
     server_bin = ensure_llama_server_bin(app_cfg)
 
     new_llama = replace(
         app_cfg.llama,
         llama_gguf_path=str(gguf_path),
-        llama_server_bin_path=str(server_bin)
+        llama_server_bin_path=str(server_bin),
+        llama_mmproj_path=str(mmproj_path) if mmproj_path else None,
     )
 
     new_llama.validate_resolved()

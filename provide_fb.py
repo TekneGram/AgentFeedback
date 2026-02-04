@@ -2,6 +2,7 @@ from app.settings import build_settings
 from app.container import build_container
 from app.pipeline import FeedbackPipeline
 from app.llama_bootstrap import bootstrap_llama
+from app.model_selection import select_model_and_update_config
 
 from utils.terminal_ui import Color, type_print, stage
 
@@ -9,6 +10,10 @@ def main():
     # Build config (paths/run/ged/llama)
     type_print("Building the app settings", color=Color.BLUE)
     app_cfg = build_settings()
+
+    # Choose a model based on hardware and user preference
+    type_print("Selecting the best model for your system", color=Color.BLUE)
+    app_cfg = select_model_and_update_config(app_cfg)
 
     # Ensure gguf + llama-server exist, and return updated cfg (paths resolved)
     type_print("Bootstrapping Llama", color=Color.BLUE)

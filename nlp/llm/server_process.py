@@ -12,6 +12,7 @@ import time
 class LlamaServerProcess:
     server_bin: Path
     model_path: Path
+    mmproj_path: Path | None = None
     host: str = "127.0.0.1"
     port: int = 8080
     n_ctx: int = 4096
@@ -39,6 +40,8 @@ class LlamaServerProcess:
             "--host", self.host,
             "--port", str(self.port)
         ]
+        if self.mmproj_path is not None:
+            cmd += ["--mmproj", str(self.mmproj_path)]
         if self.n_threads is not None:
             cmd += ["-t", str(self.n_threads)]
 

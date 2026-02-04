@@ -9,6 +9,8 @@ C4Component
     Container_Boundary(cli, "CLI Runner") {
         Component(provide, "provide_fb", "Python", "Entry point that builds config, bootstraps LLM, and runs pipeline")
         Component(settings, "Settings Builder", "Python", "Creates AppConfig from defaults")
+        Component(model_select, "Model Selector", "Python", "Recommends + prompts for model choice")
+        Component(hw_detect, "Hardware Detector", "Python", "Detects RAM/VRAM/CPU/MPS")
         Component(bootstrap, "Llama Bootstrap", "Python", "Ensures GGUF + llama-server binary")
         Component(container, "Container Builder", "Python", "Wires services and starts server")
     }
@@ -31,9 +33,13 @@ C4Component
 
     System_Ext(llama, "llama-server", "llama.cpp", "Local inference server")
     ContainerDb(models, "Model Store", "Filesystem", ".appdata/models/*.gguf")
+    ContainerDb(model_cfg, "Model Selection Config", "Filesystem", ".appdata/config/llama_model.json")
 
     Rel(user, provide, "Runs")
     Rel(provide, settings, "Builds config")
+    Rel(provide, model_select, "Chooses model")
+    Rel(model_select, hw_detect, "Detects hardware")
+    Rel(model_select, model_cfg, "Reads/writes selection")
     Rel(provide, bootstrap, "Resolves model + server")
     Rel(provide, container, "Builds services")
 

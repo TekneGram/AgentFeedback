@@ -5,3 +5,5 @@ requests
 spacy
 torch
 transformers
+psutil
+python-docx

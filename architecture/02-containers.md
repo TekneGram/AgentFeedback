@@ -8,6 +8,8 @@ C4Container
 
     System_Boundary(app, "Essay Feedback App") {
         Container(cli, "CLI Runner", "Python", "Loads config, wires services, starts pipeline")
+        Container(model_select, "Model Selector", "Python", "Prompts user and recommends LLM based on hardware")
+        Container(hw_detect, "Hardware Detector", "Python", "Scans RAM/VRAM/CPU/MPS")
         Container(pipeline, "Feedback Pipeline", "Python", "Loads text, runs GED + LLM tasks")
         Container(ged, "GED Service", "Python", "Grammar error detection via BERT")
         Container(llm, "LLM Service", "Python", "Calls local LLM server")
@@ -20,10 +22,14 @@ C4Container
     System_Ext(llama, "llama-server", "llama.cpp", "Local LLM inference server")
     System_Ext(hf, "Hugging Face Hub", "Model hosting", "Downloads GGUF model")
     ContainerDb(models, "Model Store", "Filesystem", ".appdata/models/*.gguf")
+    ContainerDb(model_cfg, "Model Selection Config", "Filesystem", ".appdata/config/llama_model.json")
     ContainerDb(explained, "Explainability Output", "Filesystem", "Assessment/explained/*.txt")
     ContainerDb(docx_out_files, "DOCX Output", "Filesystem", "Assessment/checked/*.docx")
 
     Rel(user, cli, "Runs")
+    Rel(cli, model_select, "Prompts selection")
+    Rel(model_select, hw_detect, "Reads system info")
+    Rel(model_select, model_cfg, "Reads/writes selection")
     Rel(cli, pipeline, "Invokes")
     Rel(pipeline, docx, "Loads paragraphs")
     Rel(pipeline, ged, "Scores sentences")

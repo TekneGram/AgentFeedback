@@ -18,7 +18,7 @@ class OpenAICompatChatClient:
         """
         Replace the path of chat_url with `path`.
         """
-        parts = urlsplit(self.char_url)
+        parts = urlsplit(self.chat_url)
         return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
     
     def _post_json(self, url: str, payload: JSONDict, *, stream: bool = False) -> requests.Response:
