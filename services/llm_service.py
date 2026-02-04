@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 @dataclass
 class LlmService:
     client: OpenAICompatChatClient
+    model_family: str = "instruct"
     max_tokens_sentence: int = 128
+    max_tokens_sentence_thinking: int = 1024
 
     def answer(self, sentence: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
@@ -49,7 +51,18 @@ class LlmService:
     def correct_sentences(self, sentences: list[str], explain: "ExplainabilityRecorder | None" = None) -> list[str]:
         if explain is not None:
             explain.log("LLM - grammar correction", f"Correction sentence count: {len(sentences)}")
-        out = correct_grammar_sentences(self.client, sentences, max_tokens=self.max_tokens_sentence)
+        max_tokens = self.max_tokens_sentence_thinking if self.model_family == "thinking" else self.max_tokens_sentence
+        results = correct_grammar_sentences(
+            self.client,
+            sentences,
+            max_tokens=max_tokens,
+            model_family="thinking" if self.model_family == "thinking" else "instruct",
+        )
+        out: list[str] = []
+        for idx, (final, thinking) in enumerate(results):
+            out.append(final)
+            if explain is not None and thinking:
+                explain.log("LLM THINKING", f"Sentence {idx + 1}: {thinking}")
         if explain is not None:
             explain.log("LLM - grammar correction", f"Correction output count: {len(out)}")
         return out

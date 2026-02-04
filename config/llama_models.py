@@ -10,6 +10,8 @@ class LlamaModelSpec:
     hf_repo_id: str
     hf_filename: str
     mmproj_filename: str | None
+    model_family: str
+    base_n_ctx: int
     min_ram_gb: int
     min_vram_gb: int
     notes: str
@@ -22,6 +24,8 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         hf_repo_id="unsloth/Qwen3-4B-Instruct-2507-GGUF",
         hf_filename="Qwen3-4B-Instruct-2507-Q8_0.gguf",
         mmproj_filename=None,
+        model_family="instruct",
+        base_n_ctx=4096,
         min_ram_gb=12,
         min_vram_gb=6,
         notes="CPU/GPU friendly; good quality for 4B.",
@@ -32,6 +36,8 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         hf_repo_id="unsloth/Qwen3-4B-Thinking-2507-GGUF",
         hf_filename="Qwen3-4B-Thinking-2507-Q8_0.gguf",
         mmproj_filename=None,
+        model_family="thinking",
+        base_n_ctx=4096,
         min_ram_gb=12,
         min_vram_gb=6,
         notes="Thinking variant; slower but stronger reasoning.",
@@ -42,6 +48,8 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         hf_repo_id="unsloth/Qwen3-VL-8B-Instruct-GGUF",
         hf_filename="Qwen3-VL-8B-Instruct-Q8_0.gguf",
         mmproj_filename="mmproj-F16.gguf",
+        model_family="instruct",
+        base_n_ctx=4096,
         min_ram_gb=20,
         min_vram_gb=10,
         notes="VL model; needs mmproj for vision tasks.",
@@ -52,8 +60,22 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         hf_repo_id="unsloth/Qwen3-VL-8B-Thinking-GGUF",
         hf_filename="Qwen3-VL-8B-Thinking-Q8_0.gguf",
         mmproj_filename="mmproj-F16.gguf",
+        model_family="thinking",
+        base_n_ctx=4096,
         min_ram_gb=20,
         min_vram_gb=10,
         notes="VL thinking variant; highest quality if it fits.",
+    ),
+    LlamaModelSpec(
+        key="gemma-3-1b-it",
+        display_name="Gemma3 1B IT",
+        hf_repo_id="bartowski/google_gemma-3-1b-it-GGUF",
+        hf_filename="google_gemma-3-1b-it-bf16.gguf",
+        mmproj_filename=None,
+        model_family="instruct",
+        base_n_ctx=4096,
+        min_ram_gb=6,
+        min_vram_gb=4,
+        notes="CPU/GPU friendly; good quality for 1B.",
     ),
 ]

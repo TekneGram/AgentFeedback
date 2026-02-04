@@ -41,10 +41,11 @@ def build_container(cfg):
         server_proc = LlamaServerProcess(
             server_bin=server_bin,
             model_path=model_path,
+            model_alias=cfg.llama.llama_model_alias,
             mmproj_path=mmproj_path,
             host="127.0.0.1",
             port=8080,
-            n_ctx=4096,
+            n_ctx=cfg.llama.llama_n_ctx,
             n_threads=None
         )
         server_proc.start()
@@ -52,11 +53,11 @@ def build_container(cfg):
 
     client = OpenAICompatChatClient(
         chat_url=cfg.llama.llama_server_url,
-        model_name=cfg.llama.llama_server_model,
+        model_name=cfg.llama.llama_model_alias,
         timeout_s=120,
         temperature=0.0
     )
-    llm_service = LlmService(client=client)
+    llm_service = LlmService(client=client, model_family=cfg.llama.llama_model_family)
     explainability = ExplainabilityRecorder.new(
         run_cfg=cfg.run,
         ged_cfg=cfg.ged,

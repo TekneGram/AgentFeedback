@@ -57,6 +57,7 @@ def analyze_topic_sentence(client: OpenAICompatChatClient, text: str, learner_to
         }
     user = json.dumps(user_json, ensure_ascii=False)
     analysis = client.chat(system=SYSTEM_ANALYZE, user=user, max_tokens=max_tokens, temperature=0.0)
+    print(f"analysis: {analysis}")
     analysis = (analysis or "").strip()
     if not analysis:
         analysis = "No analysis given!"

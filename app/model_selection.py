@@ -213,6 +213,9 @@ def select_model_and_update_config(app_cfg):
         hf_mmproj_filename=chosen.mmproj_filename,
         llama_model_key=chosen.key,
         llama_model_display_name=chosen.display_name,
+        llama_model_alias=chosen.display_name,
+        llama_model_family=chosen.model_family,
+        llama_n_ctx=chosen.base_n_ctx * 2 if chosen.model_family == "thinking" else chosen.base_n_ctx,
     )
     new_llama.validate()
     return replace(app_cfg, llama=new_llama)

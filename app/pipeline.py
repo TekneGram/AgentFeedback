@@ -65,26 +65,26 @@ class FeedbackPipeline:
                 self.explain.log("GED", f"Total results: {len(ged_results)}")
 
             # ---- GRAMMAR ERROR CORRECTION ----
-            with stage("Running grammar error corrections.", color=Color.CYAN):
-                error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
-                if error_idxs:
-                    self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
-                max_corrections = max(0, int(cfg.run.max_llm_corrections))
-                if max_corrections > 0 and error_idxs:
-                    seed = int(hashlib.md5(docx_path.name.encode("utf-8")).hexdigest()[:8], 16)
-                    rng = random.Random(seed)
-                    sample_count = min(max_corrections, len(error_idxs))
-                    sampled_idxs = sorted(rng.sample(error_idxs, sample_count))
-                    to_correct = [sentences[i] for i in sampled_idxs]
-                    corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
-                    for idx, new_text in zip(sampled_idxs, corrected):
-                        original = sentences[idx]
-                        self.explain.log("LLM", f"Corrected sentence {idx + 1}")
-                        self.explain.log("LLM", f"Original: {original}")
-                        self.explain.log("LLM", f"Corrected: {new_text}")
-                        sentences[idx] = new_text
-                else:
-                    self.explain.log("LLM", "No corrections requested or no error sentences found")
+        #with stage("Running grammar error corrections.", color=Color.CYAN):
+            error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
+            if error_idxs:
+                self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
+            max_corrections = max(0, int(cfg.run.max_llm_corrections))
+            if max_corrections > 0 and error_idxs:
+                seed = int(hashlib.md5(docx_path.name.encode("utf-8")).hexdigest()[:8], 16)
+                rng = random.Random(seed)
+                sample_count = min(max_corrections, len(error_idxs))
+                sampled_idxs = sorted(rng.sample(error_idxs, sample_count))
+                to_correct = [sentences[i] for i in sampled_idxs]
+                corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
+                for idx, new_text in zip(sampled_idxs, corrected):
+                    original = sentences[idx]
+                    self.explain.log("LLM", f"Corrected sentence {idx + 1}")
+                    self.explain.log("LLM", f"Original: {original}")
+                    self.explain.log("LLM", f"Corrected: {new_text}")
+                    sentences[idx] = new_text
+            else:
+                self.explain.log("LLM", "No corrections requested or no error sentences found")
 
             edited_body_text = " ".join(s.strip() for s in body_paragraphs if s and s.strip())
             corrected_body_text = " ".join(s.strip() for s in sentences if s and s.strip())
@@ -94,8 +94,8 @@ class FeedbackPipeline:
             # ------- FEEDBACK -------
 
             # ---- Topic Sentence ----
-            with stage("Providing topic sentence feedback...", color=Color.CYAN):
-                ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
+            #with stage("Providing topic sentence feedback...", color=Color.CYAN):
+            ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
 
             # Feedback to be added once feedback has been initiated
             feedback_paragraphs = ["(Feedback not available yet.)"]

@@ -10,6 +10,9 @@ class LlamaConfig:
     llama_server_model: str
     llama_model_key: str
     llama_model_display_name: str
+    llama_model_alias: str
+    llama_model_family: str
+    llama_n_ctx: int
 
     hf_repo_id: str | None = None
     hf_filename: str | None = None
@@ -39,6 +42,12 @@ class LlamaConfig:
             raise ValueError("LlamaConfig.llama_model_key must be a non-empty string.")
         if not isinstance(self.llama_model_display_name, str) or not self.llama_model_display_name.strip():
             raise ValueError("LlamaConfig.llama_model_display_name must be a non-empty string.")
+        if not isinstance(self.llama_model_alias, str) or not self.llama_model_alias.strip():
+            raise ValueError("LlamaConfig.llama_model_alias must be a non-empty string.")
+        if not isinstance(self.llama_model_family, str) or self.llama_model_family not in {"instruct", "thinking"}:
+            raise ValueError("LlamaConfig.llama_model_family must be 'instruct' or 'thinking'.")
+        if not isinstance(self.llama_n_ctx, int) or self.llama_n_ctx <= 0:
+            raise ValueError("LlamaConfig.llama_n_ctx must be a positive integer.")
     
     @staticmethod
     def from_strings(
@@ -48,6 +57,9 @@ class LlamaConfig:
             llama_server_model: str,
             llama_model_key: str,
             llama_model_display_name: str,
+            llama_model_alias: str,
+            llama_model_family: str,
+            llama_n_ctx: int,
             llama_server_bin_path: str | None,
             hf_repo_id: str | None,
             hf_filename: str | None,
@@ -60,6 +72,9 @@ class LlamaConfig:
             llama_server_model=llama_server_model,
             llama_model_key=llama_model_key,
             llama_model_display_name=llama_model_display_name,
+            llama_model_alias=llama_model_alias,
+            llama_model_family=llama_model_family,
+            llama_n_ctx=llama_n_ctx,
             llama_server_bin_path=llama_server_bin_path,
             hf_repo_id=hf_repo_id,
             hf_filename=hf_filename,

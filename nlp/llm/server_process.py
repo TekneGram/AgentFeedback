@@ -8,10 +8,10 @@ import requests
 import time
 
 @dataclass
-
 class LlamaServerProcess:
     server_bin: Path
     model_path: Path
+    model_alias: str = "llama"
     mmproj_path: Path | None = None
     host: str = "127.0.0.1"
     port: int = 8080
@@ -35,7 +35,7 @@ class LlamaServerProcess:
         cmd = [
             str(self.server_bin),
             "-m", str(self.model_path),
-            "--alias", "llama",
+            "--alias", self.model_alias,
             "-c", str(self.n_ctx),
             "--host", self.host,
             "--port", str(self.port)
@@ -59,7 +59,7 @@ class LlamaServerProcess:
         models_url = f"http://{self.host}:{self.port}/v1/models"
         chat_url = f"http://{self.host}:{self.port}/v1/chat/completions"
         chat_payload = {
-            "model": "llama",
+            "model": self.model_alias,
             "temperature": 0.0,
             "max_tokens": 1,
             "messages": [
