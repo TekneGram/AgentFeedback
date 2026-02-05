@@ -5,29 +5,29 @@ from typing import TYPE_CHECKING
 import hashlib
 import random
 from text.header_extractor import build_edited_text, build_text_from_header_and_body, build_paragraphs_from_header_and_body
+from interfaces.config.app_config import AppConfigShape
+from interfaces.docx.loader import DocxLoader as DocxLoaderProtocol
+from interfaces.docx.output import DocxOutput
+from interfaces.pipeline.pipeline import Pipeline
 
 from utils.terminal_ui import stage, Color, type_print
 
-# I do not create DocxLoader objects
-# They are injected into this pipeline so I only need to type check it.
 if TYPE_CHECKING:
-    from inout.docx_loader import DocxLoader
     from services.ged_service import GedService
     from services.llm_service import LlmService
     from services.explainability import ExplainabilityRecorder
     from inout.explainability_writer import ExplainabilityWriter
-    from services.docx_output_service import DocxOutputService
 
 @dataclass
-class FeedbackPipeline:
-    loader: "DocxLoader"
+class FeedbackPipeline(Pipeline):
+    loader: DocxLoaderProtocol
     ged: "GedService"
     llm: "LlmService"
     explain: "ExplainabilityRecorder"
     explain_writer: "ExplainabilityWriter"
-    docx_out: "DocxOutputService"
+    docx_out: DocxOutput
 
-    def run_on_file(self, docx_path: Path, cfg) -> None:
+    def run_on_file(self, docx_path: Path, cfg: AppConfigShape) -> None:
         type_print(f"Loading paragraphs from doc {docx_path}", color=Color.BLUE)
         raw_paragraphs = self.loader.load_paragraphs(docx_path)
         include_edited_text_section = (
@@ -65,26 +65,26 @@ class FeedbackPipeline:
                 self.explain.log("GED", f"Total results: {len(ged_results)}")
 
             # ---- GRAMMAR ERROR CORRECTION ----
-            with stage("Running grammar error corrections.", color=Color.CYAN):
-                error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
-                if error_idxs:
-                    self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
-                max_corrections = max(0, int(cfg.run.max_llm_corrections))
-                if max_corrections > 0 and error_idxs:
-                    seed = int(hashlib.md5(docx_path.name.encode("utf-8")).hexdigest()[:8], 16)
-                    rng = random.Random(seed)
-                    sample_count = min(max_corrections, len(error_idxs))
-                    sampled_idxs = sorted(rng.sample(error_idxs, sample_count))
-                    to_correct = [sentences[i] for i in sampled_idxs]
-                    corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
-                    for idx, new_text in zip(sampled_idxs, corrected):
-                        original = sentences[idx]
-                        self.explain.log("LLM", f"Corrected sentence {idx + 1}")
-                        self.explain.log("LLM", f"Original: {original}")
-                        self.explain.log("LLM", f"Corrected: {new_text}")
-                        sentences[idx] = new_text
-                else:
-                    self.explain.log("LLM", "No corrections requested or no error sentences found")
+        #with stage("Running grammar error corrections.", color=Color.CYAN):
+            error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
+            if error_idxs:
+                self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
+            max_corrections = max(0, int(cfg.run.max_llm_corrections))
+            if max_corrections > 0 and error_idxs:
+                seed = int(hashlib.md5(docx_path.name.encode("utf-8")).hexdigest()[:8], 16)
+                rng = random.Random(seed)
+                sample_count = min(max_corrections, len(error_idxs))
+                sampled_idxs = sorted(rng.sample(error_idxs, sample_count))
+                to_correct = [sentences[i] for i in sampled_idxs]
+                corrected = self.llm.correct_sentences(to_correct, explain=self.explain)
+                for idx, new_text in zip(sampled_idxs, corrected):
+                    original = sentences[idx]
+                    self.explain.log("LLM", f"Corrected sentence {idx + 1}")
+                    self.explain.log("LLM", f"Original: {original}")
+                    self.explain.log("LLM", f"Corrected: {new_text}")
+                    sentences[idx] = new_text
+            else:
+                self.explain.log("LLM", "No corrections requested or no error sentences found")
 
             edited_body_text = " ".join(s.strip() for s in body_paragraphs if s and s.strip())
             corrected_body_text = " ".join(s.strip() for s in sentences if s and s.strip())
@@ -94,8 +94,8 @@ class FeedbackPipeline:
             # ------- FEEDBACK -------
 
             # ---- Topic Sentence ----
-            with stage("Providing topic sentence feedback...", color=Color.CYAN):
-                ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
+            #with stage("Providing topic sentence feedback...", color=Color.CYAN):
+            ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
 
             # Feedback to be added once feedback has been initiated
             feedback_paragraphs = ["(Feedback not available yet.)"]

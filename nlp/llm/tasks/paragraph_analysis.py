@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from nlp.llm.client import OpenAICompatChatClient
+from interfaces.llm.client import LlmClient
 
 import json
 
@@ -23,7 +23,7 @@ SYSTEM_ANALYZE = (
     "Be concise.\n"
 )
 
-def generate_topic_sentence(client: OpenAICompatChatClient, text: str, max_tokens: int, temperature: Optional[float] = None) -> Any:
+def generate_topic_sentence(client: LlmClient, text: str, max_tokens: int, temperature: Optional[float] = None) -> Any:
     """
     Accepts a body paragraph minus the first sentence.
     Suggests a topic sentence to match it.
@@ -40,7 +40,7 @@ def generate_topic_sentence(client: OpenAICompatChatClient, text: str, max_token
         suggested = "No suggestion given!"
     return suggested
 
-def analyze_topic_sentence(client: OpenAICompatChatClient, text: str, learner_topic_sentence: str, suggested_topic_sentence: str, max_tokens: int) -> Any:
+def analyze_topic_sentence(client: LlmClient, text: str, learner_topic_sentence: str, suggested_topic_sentence: str, max_tokens: int) -> Any:
     """
     Accepts a body paragraph with the topic sentence AND a suggested topic sentence.
     Compares the writer's topic sentence to the suggested topic sentence
@@ -57,6 +57,7 @@ def analyze_topic_sentence(client: OpenAICompatChatClient, text: str, learner_to
         }
     user = json.dumps(user_json, ensure_ascii=False)
     analysis = client.chat(system=SYSTEM_ANALYZE, user=user, max_tokens=max_tokens, temperature=0.0)
+    print(f"analysis: {analysis}")
     analysis = (analysis or "").strip()
     if not analysis:
         analysis = "No analysis given!"

@@ -68,8 +68,10 @@ def get_models_dir(base_dir: Path) -> Path:
     return base_dir / "models"
 
 def is_model_downloaded(spec: LlamaModelSpec, models_dir: Path) -> bool:
-    gguf = models_dir / spec.hf_filename
-    return gguf.exists() and gguf.stat().st_size > 0
+    if spec.backend == "server":
+        gguf = models_dir / spec.hf_filename
+        return gguf.exists() and gguf.stat().st_size > 0
+    return False
 
 def list_downloaded_specs(specs: list[LlamaModelSpec], models_dir: Path) -> list[LlamaModelSpec]:
     return [s for s in specs if is_model_downloaded(s, models_dir)]
@@ -164,21 +166,23 @@ def prompt_model_choice_from_list(
 
 def select_model_and_update_config(app_cfg):
     base_dir = get_app_base_dir("EssayLens", "TekneGram")
+    backend = "server"
     models_dir = get_models_dir(base_dir)
     hw = get_hardware_info()
-    recommended = recommend_model(MODEL_SPECS, hw)
+    filtered_specs = [s for s in MODEL_SPECS if s.backend == backend]
+    recommended = recommend_model(filtered_specs, hw)
     persisted_key = load_persisted_model_key(base_dir)
 
     # If persisted choice fits, treat it as the recommended default.
     if persisted_key:
-        persisted_spec = next((s for s in MODEL_SPECS if s.key == persisted_key), None)
+        persisted_spec = next((s for s in filtered_specs if s.key == persisted_key), None)
         if persisted_spec and _fits_model(persisted_spec, hw):
             recommended = persisted_spec
         else:
             persisted_key = None
 
-    downloaded_specs = list_downloaded_specs(MODEL_SPECS, models_dir)
-    downloadable_specs = list_available_for_download(MODEL_SPECS, models_dir)
+    downloaded_specs = list_downloaded_specs(filtered_specs, models_dir)
+    downloadable_specs = list_available_for_download(filtered_specs, models_dir)
 
     action = "select"
     action = prompt_initial_action(
@@ -187,7 +191,7 @@ def select_model_and_update_config(app_cfg):
     )
 
     if action == "select":
-        selection_list = downloaded_specs or MODEL_SPECS
+        selection_list = downloaded_specs or filtered_specs
         chosen = prompt_model_choice_from_list(
             selection_list,
             recommended,
@@ -196,7 +200,7 @@ def select_model_and_update_config(app_cfg):
             label="installed models",
         )
     else:
-        selection_list = downloadable_specs or MODEL_SPECS
+        selection_list = downloadable_specs or filtered_specs
         chosen = prompt_model_choice_from_list(
             selection_list,
             recommended,
@@ -208,11 +212,15 @@ def select_model_and_update_config(app_cfg):
 
     new_llama = replace(
         app_cfg.llama,
+        llama_backend=backend,
         hf_repo_id=chosen.hf_repo_id,
         hf_filename=chosen.hf_filename,
         hf_mmproj_filename=chosen.mmproj_filename,
         llama_model_key=chosen.key,
         llama_model_display_name=chosen.display_name,
+        llama_model_alias=chosen.display_name,
+        llama_model_family=chosen.model_family,
+        llama_n_ctx=chosen.base_n_ctx * 2 if chosen.model_family == "thinking" else chosen.base_n_ctx,
     )
     new_llama.validate()
     return replace(app_cfg, llama=new_llama)

@@ -1,15 +1,16 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 import torch
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 
-@dataclass
-class GedSentenceResult:
-    sentence: str
-    has_error: bool
-    error_tokens: List[str]
+from interfaces.ged.results import GedSentenceResult as GedSentenceResultBase
+
+
+@dataclass(frozen=True)
+class GedSentenceResult(GedSentenceResultBase):
+    error_tokens: List[str] = field(default_factory=list)
 
 class GedBertDetector:
     """
@@ -71,6 +72,12 @@ class GedBertDetector:
                         has_error = True
                         token = self.tokenizer.convert_ids_to_tokens([token_id])[0]
                         error_tokens.append(token)
-                results.append(GedSentenceResult(sentence=sent, has_error=has_error, error_tokens=error_tokens))
+                results.append(
+                    GedSentenceResult(
+                        sentence=sent,
+                        has_error=has_error,
+                        error_tokens=error_tokens,
+                    )
+                )
         return results
         

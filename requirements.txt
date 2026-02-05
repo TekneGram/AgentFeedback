@@ -6,4 +6,5 @@ spacy
 torch
 transformers
 psutil
+transformers
 python-docx

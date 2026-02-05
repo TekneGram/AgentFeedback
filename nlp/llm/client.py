@@ -4,7 +4,9 @@ import requests
 from urllib.parse import urlsplit, urlunsplit
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 import json
+import os
 
+from interfaces.llm.messages import LlmMessage
 JSONDict = Dict[str, Any]
 
 @dataclass
@@ -41,8 +43,46 @@ class OpenAICompatChatClient:
         if r.status_code != 200:
             # show the server’s explanation (often “Loading model”)
             raise RuntimeError(f"llama-server HTTP {r.status_code}: {r.text[:1000]}")
+        print("Here is r:", r)
         data = r.json()
+        print(f"Here is the json: {data}")
+
+        data = r.json()
+
+        # DEBUG: dump message payload when enabled
+        if os.getenv("LLM_DEBUG", "").strip() in {"1", "true", "True", "yes", "YES"}:
+            try:
+                msg = (data.get("choices") or [{}])[0].get("message")
+            except Exception:
+                msg = None
+            print("LLM_DEBUG message:", msg)
+
+
         return (data["choices"][0]["message"]["content"] or "").strip()
+
+    def chat_message(self, system: str, user: str, max_tokens: int, temperature: Optional[float] = None) -> LlmMessage:
+        payload = {
+            "model": self.model_name,
+            "temperature": self.temperature if temperature is None else temperature,
+            "max_tokens": max_tokens,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user}
+            ],
+        }
+        r = requests.post(self.chat_url, json=payload, timeout=self.timeout_s)
+        if r.status_code != 200:
+            raise RuntimeError(f"llama-server HTTP {r.status_code}: {r.text[:1000]}")
+        data = r.json()
+        choices = data.get("choices") or []
+        message = choices[0].get("message") if choices else None
+        if not message:
+            return LlmMessage(role="assistant", content="", reasoning_content=None)
+        return LlmMessage(
+            role=message.get("role") or "assistant",
+            content=message.get("content") or "",
+            reasoning_content=message.get("reasoning_content"),
+        )
     
     def chat_stream(self, system: str, user: str, max_tokens: int) -> Iterator[str]:
         """
