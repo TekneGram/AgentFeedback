@@ -8,7 +8,6 @@ from services.docx_output_service import DocxOutputService
 from nlp.llm.server_process import LlamaServerProcess
 from nlp.llm.client import OpenAICompatChatClient
 from pathlib import Path
-from urllib.parse import urlparse
 import atexit
 from inout.explainability_writer import ExplainabilityWriter
 
@@ -30,55 +29,41 @@ def build_container(cfg):
     ged_service = GedService(detector=ged_detector)
 
     # LLM wiring (server mode)
-    def _server_from_config(llama_cfg):
-        server_bin = _resolve_path(llama_cfg.llama_server_bin_path, project_root)
-        model_path = Path(llama_cfg.llama_gguf_path).expanduser().resolve()
+    server_proc = None
+    if cfg.llama.llama_backend == "server":
+        server_bin = _resolve_path(cfg.llama.llama_server_bin_path, project_root)
+        model_path = Path(cfg.llama.llama_gguf_path).expanduser().resolve()
         mmproj_path = None
-        if llama_cfg.llama_mmproj_path:
-            mmproj_path = Path(llama_cfg.llama_mmproj_path).expanduser().resolve()
-        parsed = urlparse(llama_cfg.llama_server_url)
-        host = parsed.hostname or "127.0.0.1"
-        port = parsed.port or 8080
+        if cfg.llama.llama_mmproj_path:
+            mmproj_path = Path(cfg.llama.llama_mmproj_path).expanduser().resolve()
+
         server_proc = LlamaServerProcess(
             server_bin=server_bin,
             model_path=model_path,
-            model_alias=llama_cfg.llama_model_alias,
+            model_alias=cfg.llama.llama_model_alias,
             mmproj_path=mmproj_path,
-            host=host,
-            port=port,
-            n_ctx=llama_cfg.llama_n_ctx,
-            n_threads=None,
+            host="127.0.0.1",
+            port=8080,
+            n_ctx=cfg.llama.llama_n_ctx,
+            n_threads=None
         )
         server_proc.start()
         atexit.register(server_proc.stop)
-        return server_proc
 
-    server_proc_small = _server_from_config(cfg.llama_small)
-    server_proc_big = _server_from_config(cfg.llama_big)
-
-    small_client = OpenAICompatChatClient(
-        chat_url=cfg.llama_small.llama_server_url,
-        model_name=cfg.llama_small.llama_model_alias,
-        timeout_s=120,
-        temperature=0.0,
-    )
-    big_client = OpenAICompatChatClient(
-        chat_url=cfg.llama_big.llama_server_url,
-        model_name=cfg.llama_big.llama_model_alias,
+    client = OpenAICompatChatClient(
+        chat_url=cfg.llama.llama_server_url,
+        model_name=cfg.llama.llama_model_alias,
         timeout_s=120,
         temperature=0.0,
     )
     llm_service = LlmService(
-        small_client=small_client,
-        big_client=big_client,
-        small_model_family=cfg.llama_small.llama_model_family,
-        big_model_family=cfg.llama_big.llama_model_family,
+        client=client,
+        model_family=cfg.llama.llama_model_family,
     )
     explainability = ExplainabilityRecorder.new(
         run_cfg=cfg.run,
         ged_cfg=cfg.ged,
-        llama_small_cfg=cfg.llama_small,
-        llama_big_cfg=cfg.llama_big,
+        llama_cfg=cfg.llama,
     )
     explain_writer = ExplainabilityWriter(cfg.paths.explained_txt_folder)
     docx_out = DocxOutputService(author=cfg.run.author)
@@ -88,8 +73,7 @@ def build_container(cfg):
         "ged": ged_service,
         "cfg": cfg,
         "llm": llm_service,
-        "llama-server-small": server_proc_small,
-        "llama-server-big": server_proc_big,
+        "llama-server": server_proc,
         "explain": explainability,
         "explain_writer": explain_writer,
         "docx_out": docx_out,

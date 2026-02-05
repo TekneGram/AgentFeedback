@@ -15,20 +15,13 @@ class ExplainabilityRecorder:
     run_id: str
     run_cfg: RunConfig
     ged_cfg: GedConfig
-    llama_small_cfg: LlamaConfig
-    llama_big_cfg: LlamaConfig
+    llama_cfg: LlamaConfig
     _lines: list[str] = field(default_factory=list)
 
     @staticmethod
-    def new(run_cfg: RunConfig, ged_cfg: GedConfig, llama_small_cfg: LlamaConfig, llama_big_cfg: LlamaConfig) -> "ExplainabilityRecorder":
+    def new(run_cfg: RunConfig, ged_cfg: GedConfig, llama_cfg: LlamaConfig) -> "ExplainabilityRecorder":
         run_id = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        return ExplainabilityRecorder(
-            run_id=run_id,
-            run_cfg=run_cfg,
-            ged_cfg=ged_cfg,
-            llama_small_cfg=llama_small_cfg,
-            llama_big_cfg=llama_big_cfg,
-        )
+        return ExplainabilityRecorder(run_id=run_id, run_cfg=run_cfg, ged_cfg=ged_cfg, llama_cfg=llama_cfg)
 
     def reset(self) -> None:
         self._lines.clear()
@@ -41,10 +34,8 @@ class ExplainabilityRecorder:
         self._lines.append(f"AUTHOR: {self.run_cfg.author}")
         self._lines.append(f"GED_MODEL: {self.ged_cfg.model_name}")
         self._lines.append(f"GED_BATCH_SIZE: {self.ged_cfg.batch_size}")
-        self._lines.append(f"LLAMA_SMALL_BACKEND: {self.llama_small_cfg.llama_backend}")
-        self._lines.append(f"LLAMA_SMALL_MODEL: {self.llama_small_cfg.llama_model_display_name}")
-        self._lines.append(f"LLAMA_BIG_BACKEND: {self.llama_big_cfg.llama_backend}")
-        self._lines.append(f"LLAMA_BIG_MODEL: {self.llama_big_cfg.llama_model_display_name}")
+        self._lines.append(f"LLAMA_BACKEND: {self.llama_cfg.llama_backend}")
+        self._lines.append(f"LLAMA_MODEL: {self.llama_cfg.llama_model_display_name}")
         self._lines.append(f"MAX_LLM_CORRECTIONS: {self.run_cfg.max_llm_corrections}")
         self._lines.append(f"INCLUDE_EDITED_TEXT_SECTION: {include_edited_text}")
         self._lines.append("")

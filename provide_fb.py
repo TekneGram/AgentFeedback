@@ -7,7 +7,7 @@ from app.model_selection import select_model_and_update_config
 from utils.terminal_ui import Color, type_print, stage
 
 def main():
-    # Build config (paths/run/ged/llama_small/llama_big)
+    # Build config (paths/run/ged/llama)
     type_print("Building the app settings", color=Color.BLUE)
     app_cfg = build_settings()
 
@@ -21,8 +21,8 @@ def main():
     print(f"This is the config: {app_cfg}")
 
     # Build all services/objects via a container
-    type_print("Loading two language models. This will take a large amount of your system's memory. Closing unused apps and browser windows can help.", color=Color.RED)
-    with stage("Building all the services and loading two language models.", color=Color.BLUE):
+    type_print("Loading a large language model. This will take a large amount of your system's memory. Closing unused apps and browser windows can help.", color=Color.RED)
+    with stage("Building all the services and loading a large language model.", color=Color.BLUE):
         deps = build_container(app_cfg)
 
     # Construct the pipeline and inject the dependencies as kwargs (named arguments)
@@ -52,12 +52,9 @@ def main():
 
     # Stop llama-server explicitly on normal shutdown
     type_print("Shutting down the server. Have a nice day!", color=Color.BLUE)
-    server_proc_small = deps.get("llama-server-small")
-    if server_proc_small is not None:
-        server_proc_small.stop()
-    server_proc_big = deps.get("llama-server-big")
-    if server_proc_big is not None:
-        server_proc_big.stop()
+    server_proc = deps.get("llama-server")
+    if server_proc is not None:
+        server_proc.stop()
     
 
 
