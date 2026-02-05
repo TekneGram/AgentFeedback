@@ -100,8 +100,11 @@ class FeedbackPipeline(Pipeline):
             # Cause-effect feedback
             ce_feedback = self.llm.cause_effect_feedback(edited_body_text, self.explain)
 
+            # Compare-contrast feedback
+            cc_feedback = self.llm.compare_contrast_feedback(edited_body_text, self.explain)
+
             # Feedback to be added once feedback has been initiated
-            feedback_paragraphs = ["(Feedback not available yet.)", ce_feedback]
+            feedback_paragraphs = ["(Feedback not available yet.)", ce_feedback, cc_feedback]
             
             # ------- BUILD DOCX -------
             type_print("Building the word document...", color=Color.RED)

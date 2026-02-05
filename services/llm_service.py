@@ -11,6 +11,7 @@ from nlp.llm.tasks.metadata_extraction import extract_metadata
 from nlp.llm.tasks.grammar_correction import correct_sentences as correct_grammar_sentences
 from nlp.llm.tasks.topic_sentence_analysis import generate_topic_sentence, analyze_topic_sentence
 from nlp.llm.tasks.cause_effect_feedback import route_cause_effect_feedback
+from nlp.llm.tasks.compare_contrast_feedback import route_compare_contrast_feedback
 
 if TYPE_CHECKING:
     from services.explainability import ExplainabilityRecorder
@@ -97,4 +98,19 @@ class LlmService:
             branch = "suggest" if count == 0 else ("feedback" if count == 1 else "praise")
             explain.log("LLM - cause effect", f"Branch: {branch}")
             explain.log("LLM - cause effect", f"Feedback: {feedback}")
+        return feedback
+
+    def compare_contrast_feedback(self, paragraph: str, explain: "ExplainabilityRecorder | None" = None) -> str:
+        if explain is not None:
+            explain.log("LLM - compare contrast", f"Paragraph length: {len(paragraph or '')}")
+        feedback, count, examples = route_compare_contrast_feedback(self.big_client, paragraph, max_tokens=512)
+        if explain is not None:
+            explain.log("LLM - compare contrast", f"Extracted examples: {count}")
+            if examples:
+                explain.log("LLM - compare contrast", f"Examples: {'; '.join(examples)}")
+            else:
+                explain.log("LLM - compare contrast", "Examples: none")
+            branch = "suggest" if count == 0 else ("feedback" if count == 1 else "praise")
+            explain.log("LLM - compare contrast", f"Branch: {branch}")
+            explain.log("LLM - compare contrast", f"Feedback: {feedback}")
         return feedback
