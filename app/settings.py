@@ -12,7 +12,8 @@ class AppConfig:
     paths: PathsConfig
     run: RunConfig
     ged: GedConfig
-    llama: LlamaConfig
+    llama_small: LlamaConfig
+    llama_big: LlamaConfig
 
 
 def build_settings() -> AppConfig:
@@ -37,14 +38,14 @@ def build_settings() -> AppConfig:
         batch_size=8,
     )
 
-    llama = LlamaConfig.from_strings(
+    llama_small = LlamaConfig.from_strings(
         llama_backend="server",
         llama_gguf_path="", # empty until bootstrap
         llama_server_url="http://127.0.0.1:8080/v1/chat/completions",
         llama_server_model = "llama",
-        llama_model_key="default",
-        llama_model_display_name="Default Model",
-        llama_model_alias="Default Model",
+        llama_model_key="default-small",
+        llama_model_display_name="Default Small Model",
+        llama_model_alias="Default Small Model",
         llama_model_family="instruct",
         llama_n_ctx=4096,
         llama_server_bin_path=".appdata/bin/llama-server",
@@ -53,4 +54,20 @@ def build_settings() -> AppConfig:
         hf_mmproj_filename=None,
     )
 
-    return AppConfig(paths=paths, run=run, ged=ged, llama=llama)
+    llama_big = LlamaConfig.from_strings(
+        llama_backend="server",
+        llama_gguf_path="", # empty until bootstrap
+        llama_server_url="http://127.0.0.1:8081/v1/chat/completions",
+        llama_server_model = "llama",
+        llama_model_key="default-big",
+        llama_model_display_name="Default Big Model",
+        llama_model_alias="Default Big Model",
+        llama_model_family="instruct",
+        llama_n_ctx=4096,
+        llama_server_bin_path=".appdata/bin/llama-server",
+        hf_repo_id="",
+        hf_filename="",
+        hf_mmproj_filename=None,
+    )
+
+    return AppConfig(paths=paths, run=run, ged=ged, llama_small=llama_small, llama_big=llama_big)

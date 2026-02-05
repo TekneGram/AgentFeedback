@@ -15,6 +15,7 @@ class LlamaModelSpec:
     base_n_ctx: int
     min_ram_gb: int
     min_vram_gb: int
+    param_size_b: int
     notes: str
 
 
@@ -30,6 +31,7 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         base_n_ctx=4096,
         min_ram_gb=12,
         min_vram_gb=6,
+        param_size_b=4,
         notes="CPU/GPU friendly; good quality for 4B.",
     ),
     LlamaModelSpec(
@@ -43,6 +45,7 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         base_n_ctx=4096,
         min_ram_gb=12,
         min_vram_gb=6,
+        param_size_b=4,
         notes="Thinking variant; slower but stronger reasoning.",
     ),
     LlamaModelSpec(
@@ -56,6 +59,7 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         base_n_ctx=4096,
         min_ram_gb=20,
         min_vram_gb=10,
+        param_size_b=8,
         notes="VL model; needs mmproj for vision tasks.",
     ),
     LlamaModelSpec(
@@ -69,6 +73,7 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         base_n_ctx=4096,
         min_ram_gb=20,
         min_vram_gb=10,
+        param_size_b=8,
         notes="VL thinking variant; highest quality if it fits.",
     ),
     LlamaModelSpec(
@@ -82,6 +87,7 @@ MODEL_SPECS: list[LlamaModelSpec] = [
         base_n_ctx=4096,
         min_ram_gb=6,
         min_vram_gb=4,
+        param_size_b=1,
         notes="CPU/GPU friendly; good quality for 1B.",
     ),
 ]

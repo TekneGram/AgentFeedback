@@ -12,4 +12,5 @@ class AppConfigShape:
     paths: PathsConfig
     run: RunConfig
     ged: GedConfig
-    llama: LlamaConfig
+    llama_small: LlamaConfig
+    llama_big: LlamaConfig

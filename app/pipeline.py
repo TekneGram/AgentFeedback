@@ -97,8 +97,11 @@ class FeedbackPipeline(Pipeline):
             #with stage("Providing topic sentence feedback...", color=Color.CYAN):
             ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
 
+            # Cause-effect feedback
+            ce_feedback = self.llm.cause_effect_feedback(edited_body_text, self.explain)
+
             # Feedback to be added once feedback has been initiated
-            feedback_paragraphs = ["(Feedback not available yet.)"]
+            feedback_paragraphs = ["(Feedback not available yet.)", ce_feedback]
             
             # ------- BUILD DOCX -------
             type_print("Building the word document...", color=Color.RED)

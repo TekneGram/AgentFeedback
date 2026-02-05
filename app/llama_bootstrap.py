@@ -7,6 +7,7 @@ import sys
 from platformdirs import user_data_dir
 from shutil import which, copy2
 from helpers.llama_build import build_llama_server
+from config.llama_config import LlamaConfig
 
 def get_app_base_dir(app_name: str, org: str) -> Path:
     # Explicit override for dev + Electron later
@@ -22,26 +23,26 @@ def get_app_base_dir(app_name: str, org: str) -> Path:
     # Prod mode -> OS-standard user data dir
     return Path(user_data_dir(app_name, org)).resolve()
 
-def ensure_gguf(cfg, models_dir: Path) -> Path:
+def ensure_gguf(cfg: LlamaConfig, models_dir: Path) -> Path:
     models_dir.mkdir(parents=True, exist_ok=True)
 
     # If already resolved and present, keep it
-    if cfg.llama.llama_gguf_path:
-        p = Path(cfg.llama.llama_gguf_path)
+    if cfg.llama_gguf_path:
+        p = Path(cfg.llama_gguf_path)
         if p.exists() and p.stat().st_size > 0:
             return p
         
-    if not cfg.llama.hf_repo_id or not cfg.llama.hf_filename:
+    if not cfg.hf_repo_id or not cfg.hf_filename:
         raise ValueError("Need hf_repo_id + hf_filename to download gguf on first run.")
     
-    local_target = models_dir / cfg.llama.hf_filename
+    local_target = models_dir / cfg.hf_filename
     if local_target.exists() and local_target.stat().st_size > 0:
         return local_target
     
     downloaded = hf_hub_download(
-        repo_id=cfg.llama.hf_repo_id,
-        filename=cfg.llama.hf_filename,
-        revision=cfg.llama.hf_revision,
+        repo_id=cfg.hf_repo_id,
+        filename=cfg.hf_filename,
+        revision=cfg.hf_revision,
         local_dir=str(models_dir),
         token=True,
     )
@@ -53,21 +54,21 @@ def ensure_gguf(cfg, models_dir: Path) -> Path:
 
     return local_target
 
-def ensure_mmproj(cfg, models_dir: Path) -> Path | None:
-    if not cfg.llama.hf_mmproj_filename:
+def ensure_mmproj(cfg: LlamaConfig, models_dir: Path) -> Path | None:
+    if not cfg.hf_mmproj_filename:
         return None
-    if not cfg.llama.hf_repo_id:
+    if not cfg.hf_repo_id:
         raise ValueError("Need hf_repo_id + hf_mmproj_filename to download mmproj on first run.")
 
     models_dir.mkdir(parents=True, exist_ok=True)
-    local_target = models_dir / cfg.llama.hf_mmproj_filename
+    local_target = models_dir / cfg.hf_mmproj_filename
     if local_target.exists() and local_target.stat().st_size > 0:
         return local_target
 
     downloaded = hf_hub_download(
-        repo_id=cfg.llama.hf_repo_id,
-        filename=cfg.llama.hf_mmproj_filename,
-        revision=cfg.llama.hf_revision,
+        repo_id=cfg.hf_repo_id,
+        filename=cfg.hf_mmproj_filename,
+        revision=cfg.hf_revision,
         local_dir=str(models_dir),
         token=True,
     )
@@ -84,22 +85,27 @@ def ensure_llama_server_bin(app_cfg) -> Path:
     return build_llama_server(server, metal=False)
 
 
-def bootstrap_llama(app_cfg):
-    # Decide an app data dir (Electron later can pass its own)
-    base = get_app_base_dir("EssayLens", "TekneGram")
-    models_dir = base / "models"
-
-    gguf_path = ensure_gguf(app_cfg, models_dir)
-    mmproj_path = ensure_mmproj(app_cfg, models_dir)
+def _bootstrap_single_llama(app_cfg, cfg: LlamaConfig, models_dir: Path) -> LlamaConfig:
+    gguf_path = ensure_gguf(cfg, models_dir)
+    mmproj_path = ensure_mmproj(cfg, models_dir)
     server_bin = ensure_llama_server_bin(app_cfg)
 
     new_llama = replace(
-        app_cfg.llama,
+        cfg,
         llama_gguf_path=str(gguf_path),
         llama_server_bin_path=str(server_bin),
         llama_mmproj_path=str(mmproj_path) if mmproj_path else None,
     )
 
     new_llama.validate_resolved()
-    return replace(app_cfg, llama=new_llama)
-    #return app_cfg
+    return new_llama
+
+
+def bootstrap_llama(app_cfg):
+    # Decide an app data dir (Electron later can pass its own)
+    base = get_app_base_dir("EssayLens", "TekneGram")
+    models_dir = base / "models"
+    new_llama_small = _bootstrap_single_llama(app_cfg, app_cfg.llama_small, models_dir)
+    new_llama_big = _bootstrap_single_llama(app_cfg, app_cfg.llama_big, models_dir)
+
+    return replace(app_cfg, llama_small=new_llama_small, llama_big=new_llama_big)

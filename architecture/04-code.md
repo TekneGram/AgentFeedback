@@ -18,7 +18,7 @@ C4Component
 
         Component(llm_service, "services.llm_service", "Python", "LLM facade")
         Component(meta_task, "nlp.llm.tasks.metadata_extraction", "Python", "Extracts metadata")
-        Component(paragraph_task, "nlp.llm.tasks.paragraph_analysis", "Python", "Analyzes paragraph structure")
+        Component(paragraph_task, "nlp.llm.tasks.topic_sentence_analysis", "Python", "Analyzes paragraph structure")
         Component(grammar_task, "nlp.llm.tasks.grammar_correction", "Python", "Corrects sentences")
         Component(test_task, "nlp.llm.tasks.test_task", "Python", "Utility chat/stream tasks")
         Component(llm_client, "nlp.llm.client", "Python", "OpenAI-compatible client")

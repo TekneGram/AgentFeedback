@@ -9,22 +9,25 @@ from interfaces.llm.client import LlmClient
 from nlp.llm.tasks.test_task import answer, stream_answer
 from nlp.llm.tasks.metadata_extraction import extract_metadata
 from nlp.llm.tasks.grammar_correction import correct_sentences as correct_grammar_sentences
-from nlp.llm.tasks.paragraph_analysis import generate_topic_sentence, analyze_topic_sentence
+from nlp.llm.tasks.topic_sentence_analysis import generate_topic_sentence, analyze_topic_sentence
+from nlp.llm.tasks.cause_effect_feedback import route_cause_effect_feedback
 
 if TYPE_CHECKING:
     from services.explainability import ExplainabilityRecorder
 
 @dataclass
 class LlmService:
-    client: LlmClient
-    model_family: str = "instruct"
+    small_client: LlmClient
+    big_client: LlmClient
+    small_model_family: str = "instruct"
+    big_model_family: str = "instruct"
     max_tokens_sentence: int = 128
     max_tokens_sentence_thinking: int = 1024
 
     def answer(self, sentence: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
             explain.log("LLM - answer", f"Answer prompt length: {len(sentence or '')}")
-        out = answer(self.client, sentence, max_tokens=self.max_tokens_sentence)
+        out = answer(self.big_client, sentence, max_tokens=self.max_tokens_sentence)
         if explain is not None:
             explain.log("LLM - answer", f"Answer response length: {len(out or '')}")
         return out
@@ -32,7 +35,7 @@ class LlmService:
     def stream_answer(self, sentence: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
             explain.log("LLM - stream", f"Stream prompt length: {len(sentence or '')}")
-        out = stream_answer(self.client, sentence, max_tokens=self.max_tokens_sentence)
+        out = stream_answer(self.big_client, sentence, max_tokens=self.max_tokens_sentence)
         if explain is not None:
             explain.log("LLM - stream", f"Streamed {len(out)} chunks")
         return out
@@ -40,7 +43,7 @@ class LlmService:
     def extract_metadata(self, text: str, explain: "ExplainabilityRecorder | None" = None) -> Any:
         if explain is not None:
             explain.log("LLM - metadata extraction", f"JSON prompt length: {len(text or '')}")
-        out = extract_metadata(self.client, text, max_tokens=1024)
+        out = extract_metadata(self.big_client, text, max_tokens=1024)
         if explain is not None:
             if isinstance(out, dict):
                 explain.log("LLM - metadata extraction", f"JSON keys: {', '.join(sorted(out.keys()))}")
@@ -51,12 +54,12 @@ class LlmService:
     def correct_sentences(self, sentences: list[str], explain: "ExplainabilityRecorder | None" = None) -> list[str]:
         if explain is not None:
             explain.log("LLM - grammar correction", f"Correction sentence count: {len(sentences)}")
-        max_tokens = self.max_tokens_sentence_thinking if self.model_family == "thinking" else self.max_tokens_sentence
+        max_tokens = self.max_tokens_sentence_thinking if self.small_model_family == "thinking" else self.max_tokens_sentence
         results = correct_grammar_sentences(
-            self.client,
+            self.small_client,
             sentences,
             max_tokens=max_tokens,
-            model_family="thinking" if self.model_family == "thinking" else "instruct",
+            model_family="thinking" if self.small_model_family == "thinking" else "instruct",
         )
         out: list[str] = []
         for idx, (final, thinking) in enumerate(results):
@@ -73,10 +76,25 @@ class LlmService:
         sentences = [sent.text for sent in doc.sents]
         edited_sentences_minus_topic = " ".join(sentences[1:])
         learner_topic_sentence = sentences[0]
-        suggested_topic_sentence = generate_topic_sentence(self.client, edited_sentences_minus_topic, max_tokens=1024, temperature=0.5)
+        suggested_topic_sentence = generate_topic_sentence(self.big_client, edited_sentences_minus_topic, max_tokens=1024, temperature=0.5)
         if explain is not None:
             explain.log("LLM - topic sentence analysis", f"Generate suggested sentence: {suggested_topic_sentence}")
-        feedback = analyze_topic_sentence(self.client, edited_sentences, learner_topic_sentence, suggested_topic_sentence, max_tokens=1024)
+        feedback = analyze_topic_sentence(self.big_client, edited_sentences, learner_topic_sentence, suggested_topic_sentence, max_tokens=1024)
         if explain is not None:
             explain.log("LLM - topic sentence analysis", f"Provide feedback: {feedback}")
+        return feedback
+
+    def cause_effect_feedback(self, paragraph: str, explain: "ExplainabilityRecorder | None" = None) -> str:
+        if explain is not None:
+            explain.log("LLM - cause effect", f"Paragraph length: {len(paragraph or '')}")
+        feedback, count, examples = route_cause_effect_feedback(self.big_client, paragraph, max_tokens=512)
+        if explain is not None:
+            explain.log("LLM - cause effect", f"Extracted examples: {count}")
+            if examples:
+                explain.log("LLM - cause effect", f"Examples: {'; '.join(examples)}")
+            else:
+                explain.log("LLM - cause effect", "Examples: none")
+            branch = "suggest" if count == 0 else ("feedback" if count == 1 else "praise")
+            explain.log("LLM - cause effect", f"Branch: {branch}")
+            explain.log("LLM - cause effect", f"Feedback: {feedback}")
         return feedback

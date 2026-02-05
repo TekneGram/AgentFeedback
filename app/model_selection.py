@@ -80,48 +80,68 @@ def list_available_for_download(specs: list[LlamaModelSpec], models_dir: Path) -
     return [s for s in specs if not is_model_downloaded(s, models_dir)]
 
 
-def load_persisted_model_key(base_dir: Path) -> str | None:
+def load_persisted_model_keys(base_dir: Path) -> tuple[str | None, str | None]:
     path = _persist_path(base_dir)
     if not path.exists():
-        return None
+        return None, None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        return None
-    key = data.get("llama_model_key")
-    return key if isinstance(key, str) and key.strip() else None
+        return None, None
+    small_key = data.get("llama_small_model_key")
+    big_key = data.get("llama_big_model_key")
+    small_key = small_key if isinstance(small_key, str) and small_key.strip() else None
+    big_key = big_key if isinstance(big_key, str) and big_key.strip() else None
+    return small_key, big_key
 
 
-def persist_model_key(base_dir: Path, key: str) -> None:
+def persist_model_keys(base_dir: Path, *, small_key: str, big_key: str) -> None:
     path = _persist_path(base_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"llama_model_key": key}, indent=2), encoding="utf-8")
+    path.write_text(
+        json.dumps(
+            {
+                "llama_small_model_key": small_key,
+                "llama_big_model_key": big_key,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 def _format_spec_line(idx: int, spec: LlamaModelSpec, recommended_key: str) -> str:
     marker = " (Recommended)" if spec.key == recommended_key else ""
     return (
         f"{idx}. {spec.display_name}{marker} | "
-        f"min RAM {spec.min_ram_gb} GB, min VRAM {spec.min_vram_gb} GB"
+        f"{spec.param_size_b}B | min RAM {spec.min_ram_gb} GB, min VRAM {spec.min_vram_gb} GB"
     )
 
 
-def prompt_initial_action(has_downloads: bool, has_installed: bool) -> str:
-    print("\nModel setup")
+def prompt_initial_action(tier_label: str, has_downloads: bool, has_installed: bool) -> str:
+    print(f"\nModel setup - {tier_label}")
     if has_downloads:
-        label = "Select an installed model (Recommended)" if has_installed else "Select a model (Recommended)"
-        print(f"1. {label}")
-        print("2. Download a new model")
-        prompt = "Selection [default: 1]: "
+        if has_installed:
+            print(f"1. Select an installed {tier_label} model (Recommended)")
+            print(f"2. Download a new {tier_label} model")
+            prompt = "Selection [default: 1]: "
+            default = "1"
+        else:
+            print(f"1. Download a new {tier_label} model (Recommended)")
+            print(f"2. Select a {tier_label} model")
+            prompt = "Selection [default: 1]: "
+            default = "1"
         while True:
             raw = input(prompt).strip()
-            if not raw or raw == "1":
-                return "select"
+            if not raw:
+                raw = default
+            if raw == "1":
+                return "select" if has_installed else "download"
             if raw == "2":
-                return "download"
+                return "download" if has_installed else "select"
             print("Invalid selection. Enter 1 or 2.")
     else:
-        label = "Select an installed model" if has_installed else "Select a model"
+        label = f"Select an installed {tier_label} model" if has_installed else f"Select a {tier_label} model"
         print(f"1. {label}")
         prompt = "Selection [default: 1]: "
         while True:
@@ -164,63 +184,116 @@ def prompt_model_choice_from_list(
         print("Invalid selection. Enter a number from the list or press Enter for default.")
 
 
-def select_model_and_update_config(app_cfg):
-    base_dir = get_app_base_dir("EssayLens", "TekneGram")
-    backend = "server"
-    models_dir = get_models_dir(base_dir)
-    hw = get_hardware_info()
-    filtered_specs = [s for s in MODEL_SPECS if s.backend == backend]
-    recommended = recommend_model(filtered_specs, hw)
-    persisted_key = load_persisted_model_key(base_dir)
+def _filter_specs_by_size(specs: list[LlamaModelSpec], *, min_b: int | None, max_b: int | None) -> list[LlamaModelSpec]:
+    out: list[LlamaModelSpec] = []
+    for spec in specs:
+        if min_b is not None and spec.param_size_b < min_b:
+            continue
+        if max_b is not None and spec.param_size_b > max_b:
+            continue
+        out.append(spec)
+    return out
+
+
+def _select_for_tier(
+    *,
+    tier_label: str,
+    specs: list[LlamaModelSpec],
+    models_dir: Path,
+    hw: HardwareInfo,
+    persisted_key: str | None,
+) -> LlamaModelSpec:
+    if not specs:
+        raise ValueError(f"No models available for tier: {tier_label}")
+    recommended = recommend_model(specs, hw)
 
     # If persisted choice fits, treat it as the recommended default.
     if persisted_key:
-        persisted_spec = next((s for s in filtered_specs if s.key == persisted_key), None)
+        persisted_spec = next((s for s in specs if s.key == persisted_key), None)
         if persisted_spec and _fits_model(persisted_spec, hw):
             recommended = persisted_spec
         else:
             persisted_key = None
 
-    downloaded_specs = list_downloaded_specs(filtered_specs, models_dir)
-    downloadable_specs = list_available_for_download(filtered_specs, models_dir)
+    downloaded_specs = list_downloaded_specs(specs, models_dir)
+    downloadable_specs = list_available_for_download(specs, models_dir)
 
-    action = "select"
     action = prompt_initial_action(
+        tier_label,
         has_downloads=bool(downloadable_specs),
         has_installed=bool(downloaded_specs),
     )
 
     if action == "select":
-        selection_list = downloaded_specs or filtered_specs
-        chosen = prompt_model_choice_from_list(
-            selection_list,
-            recommended,
-            persisted_key,
-            hw,
-            label="installed models",
-        )
+        selection_list = downloaded_specs or specs
+        label = f"{tier_label} installed models"
     else:
-        selection_list = downloadable_specs or filtered_specs
-        chosen = prompt_model_choice_from_list(
-            selection_list,
-            recommended,
-            persisted_key,
-            hw,
-            label="available downloads",
-        )
-    persist_model_key(base_dir, chosen.key)
+        selection_list = downloadable_specs or specs
+        label = f"{tier_label} available downloads"
 
-    new_llama = replace(
-        app_cfg.llama,
-        llama_backend=backend,
-        hf_repo_id=chosen.hf_repo_id,
-        hf_filename=chosen.hf_filename,
-        hf_mmproj_filename=chosen.mmproj_filename,
-        llama_model_key=chosen.key,
-        llama_model_display_name=chosen.display_name,
-        llama_model_alias=chosen.display_name,
-        llama_model_family=chosen.model_family,
-        llama_n_ctx=chosen.base_n_ctx * 2 if chosen.model_family == "thinking" else chosen.base_n_ctx,
+    return prompt_model_choice_from_list(
+        selection_list,
+        recommended,
+        persisted_key,
+        hw,
+        label=label,
     )
-    new_llama.validate()
-    return replace(app_cfg, llama=new_llama)
+
+
+def select_model_and_update_config(app_cfg):
+    base_dir = get_app_base_dir("EssayLens", "TekneGram")
+    backend = "server"
+    models_dir = get_models_dir(base_dir)
+    hw = get_hardware_info()
+    all_specs = [s for s in MODEL_SPECS if s.backend == backend]
+    small_specs = _filter_specs_by_size(all_specs, min_b=None, max_b=4)
+    big_specs = _filter_specs_by_size(all_specs, min_b=4, max_b=None)
+
+    persisted_small_key, persisted_big_key = load_persisted_model_keys(base_dir)
+
+    small_choice = _select_for_tier(
+        tier_label="small",
+        specs=small_specs,
+        models_dir=models_dir,
+        hw=hw,
+        persisted_key=persisted_small_key,
+    )
+    big_choice = _select_for_tier(
+        tier_label="big",
+        specs=big_specs,
+        models_dir=models_dir,
+        hw=hw,
+        persisted_key=persisted_big_key,
+    )
+
+    persist_model_keys(base_dir, small_key=small_choice.key, big_key=big_choice.key)
+
+    new_llama_small = replace(
+        app_cfg.llama_small,
+        llama_backend=backend,
+        hf_repo_id=small_choice.hf_repo_id,
+        hf_filename=small_choice.hf_filename,
+        hf_mmproj_filename=small_choice.mmproj_filename,
+        llama_model_key=small_choice.key,
+        llama_model_display_name=small_choice.display_name,
+        llama_model_alias=small_choice.display_name,
+        llama_model_family=small_choice.model_family,
+        llama_n_ctx=small_choice.base_n_ctx * 2 if small_choice.model_family == "thinking" else small_choice.base_n_ctx,
+    )
+    new_llama_small.validate()
+
+    new_llama_big = replace(
+        app_cfg.llama_big,
+        llama_backend=backend,
+        hf_repo_id=big_choice.hf_repo_id,
+        hf_filename=big_choice.hf_filename,
+        hf_mmproj_filename=big_choice.mmproj_filename,
+        llama_model_key=big_choice.key,
+        llama_model_display_name=big_choice.display_name,
+        llama_model_alias=big_choice.display_name,
+        llama_model_family=big_choice.model_family,
+        llama_n_ctx=big_choice.base_n_ctx * 2 if big_choice.model_family == "thinking" else big_choice.base_n_ctx,
+    )
+    new_llama_big.validate()
+
+    return replace(app_cfg, llama_small=new_llama_small, llama_big=new_llama_big)
