@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from nlp.llm.client import OpenAICompatChatClient
+from interfaces.llm.client import LlmClient
 
 SYSTEM = (
     "You are a careful English writing assistant.\n"
@@ -11,7 +11,7 @@ SYSTEM = (
 )
 
 
-def correct_sentences(client: OpenAICompatChatClient, sentences: List[str], max_tokens: int, *, model_family: str) -> List[tuple[str, str | None]]:
+def correct_sentences(client: LlmClient, sentences: List[str], max_tokens: int, *, model_family: str) -> List[tuple[str, str | None]]:
     out: List[tuple[str, str | None]] = []
     for s in sentences:
         text = (s or "").strip()
@@ -19,8 +19,8 @@ def correct_sentences(client: OpenAICompatChatClient, sentences: List[str], max_
             out.append((s, None))
             continue
         message = client.chat_message(system=SYSTEM, user=text, max_tokens=max_tokens)
-        thinking = (message.get("reasoning_content") or "").strip() or None
-        final = (message.get("content") or "").strip()
+        thinking = (message.reasoning_content or "").strip() or None
+        final = (message.content or "").strip()
         if not final and model_family == "thinking" and thinking:
             last_sentence = ""
             sentence = ""

@@ -5,9 +5,10 @@ from pathlib import Path
 from typing import Iterable
 
 from docx import Document
+from interfaces.docx.loader import DocxLoader as DocxLoaderProtocol
 
 @dataclass(frozen=True, slots=True)
-class DocxLoader:
+class DocxLoader(DocxLoaderProtocol):
     """
     Loads paragraph text from a .docx file
     """

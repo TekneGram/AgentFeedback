@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from nlp.llm.client import OpenAICompatChatClient
+from interfaces.llm.client import LlmClient
 
 
-def extract_metadata(client: OpenAICompatChatClient, text: str, max_tokens: int) -> Any:
+def extract_metadata(client: LlmClient, text: str, max_tokens: int) -> Any:
     s = (text or "").strip()
     if not s:
         return text

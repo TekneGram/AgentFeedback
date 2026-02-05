@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from nlp.ged_bert import GedBertDetector, GedSentenceResult
+from interfaces.ged.detector import GedDetector
+from interfaces.ged.results import GedSentenceResult
 
 if TYPE_CHECKING:
     from services.explainability import ExplainabilityRecorder
@@ -16,9 +17,9 @@ class GedService:
     Keeps the detector (heavy model) alive and provides simple outputs
     that the pipeline needs (flags, counts, etc).
     """
-    detector: GedBertDetector
+    detector: GedDetector
 
-    def score(self, sentences: List[str], batch_size: int, explain: "ExplainabilityRecorder | None" = None) -> List[GedSentenceResult]:
+    def score(self, sentences: list[str], batch_size: int, explain: "ExplainabilityRecorder | None" = None) -> list[GedSentenceResult]:
         """
         Return full results (sentence + has_error).
         Useful for explainability.
@@ -35,20 +36,21 @@ class GedService:
             flagged = sum(1 for r in results if r.has_error)
             explain.log("GED", f"Flagged {flagged} sentences")
             for idx, r in enumerate(results, start=1):
-                tokens = ", ".join(r.error_tokens) if r.error_tokens else "none"
+                error_tokens = getattr(r, "error_tokens", None) or []
+                tokens = ", ".join(error_tokens) if error_tokens else "none"
                 explain.log(
                     "GED",
                     f"Sentence {idx}: has_error={r.has_error}; error_tokens={tokens}; text={r.sentence}"
                 )
         return results
     
-    def flag_sentences(self, sentences: List[str], batch_size: int, explain: "ExplainabilityRecorder | None" = None) -> List[bool]:
+    def flag_sentences(self, sentences: list[str], batch_size: int, explain: "ExplainabilityRecorder | None" = None) -> list[bool]:
         """
         Return only the boolean flags in the same order as input
         """
         return [r.has_error for r in self.score(sentences, batch_size=batch_size, explain=explain)]
     
-    def count_flagged(self, sentences: List[str], batch_size: int, explain: "ExplainabilityRecorder | None" = None) -> int:
+    def count_flagged(self, sentences: list[str], batch_size: int, explain: "ExplainabilityRecorder | None" = None) -> int:
         """
         Convenience helper
         """

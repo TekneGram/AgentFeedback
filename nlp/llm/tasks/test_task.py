@@ -1,12 +1,12 @@
 from __future__ import annotations
-from nlp.llm.client import OpenAICompatChatClient
+from interfaces.llm.client import LlmClient
 
 SYSTEM = (
     "Always response in plain English. No JSON-looking text.\n"
 )
 
 
-def answer(client: OpenAICompatChatClient, sentence: str, max_tokens: int) -> str:
+def answer(client: LlmClient, sentence: str, max_tokens: int) -> str:
     s = (sentence or "").strip()
     if not s:
         return sentence
@@ -18,7 +18,7 @@ def answer(client: OpenAICompatChatClient, sentence: str, max_tokens: int) -> st
     return raw or s
 
 
-def stream_answer(client: OpenAICompatChatClient, sentence: str, max_tokens: int) -> str:
+def stream_answer(client: LlmClient, sentence: str, max_tokens: int) -> str:
     s = (sentence or "").strip()
     if not s:
         return sentence

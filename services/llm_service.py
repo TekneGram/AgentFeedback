@@ -5,7 +5,7 @@ from typing import Any, TYPE_CHECKING
 import spacy
 import json
 
-from nlp.llm.client import OpenAICompatChatClient
+from interfaces.llm.client import LlmClient
 from nlp.llm.tasks.test_task import answer, stream_answer
 from nlp.llm.tasks.metadata_extraction import extract_metadata
 from nlp.llm.tasks.grammar_correction import correct_sentences as correct_grammar_sentences
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class LlmService:
-    client: OpenAICompatChatClient
+    client: LlmClient
     model_family: str = "instruct"
     max_tokens_sentence: int = 128
     max_tokens_sentence_thinking: int = 1024

@@ -6,6 +6,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 import json
 import os
 
+from interfaces.llm.messages import LlmMessage
 JSONDict = Dict[str, Any]
 
 @dataclass
@@ -59,7 +60,7 @@ class OpenAICompatChatClient:
 
         return (data["choices"][0]["message"]["content"] or "").strip()
 
-    def chat_message(self, system: str, user: str, max_tokens: int, temperature: Optional[float] = None) -> dict:
+    def chat_message(self, system: str, user: str, max_tokens: int, temperature: Optional[float] = None) -> LlmMessage:
         payload = {
             "model": self.model_name,
             "temperature": self.temperature if temperature is None else temperature,
@@ -75,7 +76,13 @@ class OpenAICompatChatClient:
         data = r.json()
         choices = data.get("choices") or []
         message = choices[0].get("message") if choices else None
-        return message or {}
+        if not message:
+            return LlmMessage(role="assistant", content="", reasoning_content=None)
+        return LlmMessage(
+            role=message.get("role") or "assistant",
+            content=message.get("content") or "",
+            reasoning_content=message.get("reasoning_content"),
+        )
     
     def chat_stream(self, system: str, user: str, max_tokens: int) -> Iterator[str]:
         """

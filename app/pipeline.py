@@ -5,29 +5,29 @@ from typing import TYPE_CHECKING
 import hashlib
 import random
 from text.header_extractor import build_edited_text, build_text_from_header_and_body, build_paragraphs_from_header_and_body
+from interfaces.config.app_config import AppConfigShape
+from interfaces.docx.loader import DocxLoader as DocxLoaderProtocol
+from interfaces.docx.output import DocxOutput
+from interfaces.pipeline.pipeline import Pipeline
 
 from utils.terminal_ui import stage, Color, type_print
 
-# I do not create DocxLoader objects
-# They are injected into this pipeline so I only need to type check it.
 if TYPE_CHECKING:
-    from inout.docx_loader import DocxLoader
     from services.ged_service import GedService
     from services.llm_service import LlmService
     from services.explainability import ExplainabilityRecorder
     from inout.explainability_writer import ExplainabilityWriter
-    from services.docx_output_service import DocxOutputService
 
 @dataclass
-class FeedbackPipeline:
-    loader: "DocxLoader"
+class FeedbackPipeline(Pipeline):
+    loader: DocxLoaderProtocol
     ged: "GedService"
     llm: "LlmService"
     explain: "ExplainabilityRecorder"
     explain_writer: "ExplainabilityWriter"
-    docx_out: "DocxOutputService"
+    docx_out: DocxOutput
 
-    def run_on_file(self, docx_path: Path, cfg) -> None:
+    def run_on_file(self, docx_path: Path, cfg: AppConfigShape) -> None:
         type_print(f"Loading paragraphs from doc {docx_path}", color=Color.BLUE)
         raw_paragraphs = self.loader.load_paragraphs(docx_path)
         include_edited_text_section = (

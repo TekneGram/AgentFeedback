@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import List, Optional
 
 from docx_tools.track_changes_editor import TrackChangesEditor
+from interfaces.docx.output import DocxOutput
 
 
 @dataclass
-class DocxOutputService:
+class DocxOutputService(DocxOutput):
     author: str
 
     def __post_init__(self) -> None:
@@ -49,7 +50,7 @@ class DocxOutputService:
         corrected_body_text: str,
         feedback_paragraphs: Optional[List[str]] = None,
         include_edited_text: bool = True,
-    ) -> Path:
+    ) -> None:
         self._editor.build_report_with_header_and_body(
             output_path=str(output_path),
             original_paragraphs=original_paragraphs,
@@ -63,4 +64,3 @@ class DocxOutputService:
             add_page_break_before_feedback=True,
             include_edited_text_section=include_edited_text,
         )
-        return output_path
