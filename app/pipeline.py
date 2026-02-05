@@ -106,8 +106,11 @@ class FeedbackPipeline(Pipeline):
             # Hedging feedback
             hedging_feedback = self.llm.hedging_feedback(edited_body_text, self.explain)
 
+            # Content feedback
+            content_feedback = self.llm.content_feedback(edited_body_text, self.explain)
+
             # Feedback to be added once feedback has been initiated
-            feedback_paragraphs = ["(Feedback not available yet.)", ce_feedback, cc_feedback, hedging_feedback]
+            feedback_paragraphs = ["(Feedback not available yet.)", ce_feedback, cc_feedback, hedging_feedback, content_feedback]
             
             # ------- BUILD DOCX -------
             type_print("Building the word document...", color=Color.RED)
