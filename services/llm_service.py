@@ -14,6 +14,7 @@ from nlp.llm.tasks.cause_effect_feedback import route_cause_effect_feedback
 from nlp.llm.tasks.compare_contrast_feedback import route_compare_contrast_feedback
 from nlp.llm.tasks.hedging_feedback import route_hedging_feedback
 from nlp.llm.tasks.content_feedback import compare_paragraphs, filter_feedback
+from nlp.llm.tasks.conclusion_sentence_analysis import evaluate_conclusion
 
 if TYPE_CHECKING:
     from services.explainability import ExplainabilityRecorder
@@ -140,3 +141,9 @@ class LlmService:
         if explain is not None:
             explain.log("LLM - filtered content feedback", f"Feedback: {filtered_feedback}")
         return filtered_feedback
+    
+    def conclusion_feedback(self, paragraph: str, explain: "ExplainabilityRecorder | None" = None) -> str:
+        feedback = evaluate_conclusion(self.client, paragraph, max_tokens=512)
+        if explain is not None:
+            explain.log("LLM - conclusion sentence feedback", f"{feedback}")
+        return feedback
