@@ -45,7 +45,7 @@ def build_container(cfg):
             host="127.0.0.1",
             port=8080,
             n_ctx=cfg.llama.llama_n_ctx,
-            n_threads=None
+            n_threads=8
         )
         server_proc.start()
         atexit.register(server_proc.stop)

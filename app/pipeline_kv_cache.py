@@ -15,15 +15,16 @@ from utils.terminal_ui import stage, Color, type_print
 
 if TYPE_CHECKING:
     from services.ged_service import GedService
-    from services.llm_service import LlmService
+    from services_kv_cache.llm_service_kv import LlmServiceKV
     from services.explainability import ExplainabilityRecorder
     from inout.explainability_writer import ExplainabilityWriter
 
+
 @dataclass
-class FeedbackPipeline(Pipeline):
+class FeedbackPipelineKV(Pipeline):
     loader: DocxLoaderProtocol
     ged: "GedService"
-    llm: "LlmService"
+    llm: "LlmServiceKV"
     explain: "ExplainabilityRecorder"
     explain_writer: "ExplainabilityWriter"
     docx_out: DocxOutput
@@ -67,7 +68,6 @@ class FeedbackPipeline(Pipeline):
                 self.explain.log("GED", f"Total results: {len(ged_results)}")
 
             # ---- GRAMMAR ERROR CORRECTION ----
-        #with stage("Running grammar error corrections.", color=Color.CYAN):
             error_idxs = [i for i, r in enumerate(ged_results) if r.has_error]
             if error_idxs:
                 self.explain.log("GED", f"Error sentence count: {len(error_idxs)}")
@@ -94,32 +94,31 @@ class FeedbackPipeline(Pipeline):
             header_lines = build_paragraphs_from_header_and_body(header, [])[:3]
 
             # ------- FEEDBACK -------
+            self.llm.prepare_cache(edited_body_text, explain=self.explain)
 
             # ---- Topic Sentence ----
-            #with stage("Providing topic sentence feedback...", color=Color.CYAN):
             ts_feedback = self.llm.analyze_topic_sentence(edited_body_text, self.explain)
 
             # Cause-effect feedback
-            ce_feedback = self.llm.cause_effect_feedback(edited_body_text, self.explain)
+            ce_feedback = self.llm.cause_effect_feedback(self.explain)
 
             # Compare-contrast feedback
-            cc_feedback = self.llm.compare_contrast_feedback(edited_body_text, self.explain)
+            cc_feedback = self.llm.compare_contrast_feedback(self.explain)
 
             # Hedging feedback
-            hedging_feedback = self.llm.hedging_feedback(edited_body_text, self.explain)
+            hedging_feedback = self.llm.hedging_feedback(self.explain)
 
             # Content feedback
-            content_feedback = self.llm.content_feedback(edited_body_text, self.explain)
-
-            # Conclusion sentence feedback
-            conclusion_feedback = self.llm.conclusion_feedback(edited_body_text, self.explain)
-
-            # All feedback stitched together and summarized
-            all_feedback = ts_feedback + "\n" + ce_feedback + "\n" + cc_feedback + "\n" + hedging_feedback + "\n" + content_feedback + "\n" + conclusion_feedback
-            summarized_feedback = self.llm.summarize_personalize_feedback(all_feedback, self.explain)
+            content_feedback = self.llm.content_feedback(self.explain)
 
             # Feedback to be added once feedback has been initiated
-            feedback_paragraphs = ["(Feedback not available yet.)", ts_feedback, ce_feedback, cc_feedback, hedging_feedback, content_feedback, conclusion_feedback, summarized_feedback]
+            feedback_paragraphs = [
+                "(Feedback not available yet.)",
+                ce_feedback,
+                cc_feedback,
+                hedging_feedback,
+                content_feedback,
+            ]
             
             # ------- BUILD DOCX -------
             type_print("Building the word document...", color=Color.RED)

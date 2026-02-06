@@ -1,6 +1,8 @@
 from app.settings import build_settings
 from app.container import build_container
+from app.container_kv_cache import build_container_kv_cache
 from app.pipeline import FeedbackPipeline
+from app.pipeline_kv_cache import FeedbackPipelineKV
 from app.llama_bootstrap import bootstrap_llama
 from app.model_selection import select_model_and_update_config
 
@@ -10,6 +12,13 @@ def main():
     # Build config (paths/run/ged/llama)
     type_print("Building the app settings", color=Color.BLUE)
     app_cfg = build_settings()
+
+    # Choose pipeline mode
+    print("\nPipeline mode")
+    print("1. Standard pipeline (no KV cache) (Recommended)")
+    print("2. KV-cache pipeline")
+    mode = input("Selection [default: 1]: ").strip()
+    use_kv = (mode == "2")
 
     # Choose a model based on hardware and user preference
     type_print("Selecting the best model for your system", color=Color.BLUE)
@@ -23,12 +32,19 @@ def main():
     # Build all services/objects via a container
     type_print("Loading a large language model. This will take a large amount of your system's memory. Closing unused apps and browser windows can help.", color=Color.RED)
     with stage("Building all the services and loading a large language model.", color=Color.BLUE):
-        deps = build_container(app_cfg)
+        deps = build_container_kv_cache(app_cfg) if use_kv else build_container(app_cfg)
 
     # Construct the pipeline and inject the dependencies as kwargs (named arguments)
     # pipeline = FeedbackPipeline(**deps)
     type_print("Constructing the nlp pipeline.", color=Color.BLUE)
-    pipeline = FeedbackPipeline(
+    pipeline = FeedbackPipelineKV(
+        loader=deps["loader"],
+        ged=deps["ged"],
+        llm=deps["llm"],
+        explain=deps["explain"],
+        explain_writer=deps["explain_writer"],
+        docx_out=deps["docx_out"],
+    ) if use_kv else FeedbackPipeline(
         loader=deps["loader"],
         ged=deps["ged"],
         llm=deps["llm"],

@@ -15,6 +15,7 @@ from nlp.llm.tasks.compare_contrast_feedback import route_compare_contrast_feedb
 from nlp.llm.tasks.hedging_feedback import route_hedging_feedback
 from nlp.llm.tasks.content_feedback import compare_paragraphs, filter_feedback
 from nlp.llm.tasks.conclusion_sentence_analysis import evaluate_conclusion
+from nlp.llm.tasks.summarize_personalize import summarize_personalize_feedback
 
 if TYPE_CHECKING:
     from services.explainability import ExplainabilityRecorder
@@ -147,3 +148,9 @@ class LlmService:
         if explain is not None:
             explain.log("LLM - conclusion sentence feedback", f"{feedback}")
         return feedback
+    
+    def summarize_personalize_feedback(self, feedback: str, explain: "ExplainabilityRecorder | None" = None) -> str:
+        summarized_feedback = summarize_personalize_feedback(self.client, feedback, max_tokens=512)
+        if explain is not None:
+            explain.log("LLM - summarize / personalize feedback", f"{summarized_feedback}")
+        return summarized_feedback

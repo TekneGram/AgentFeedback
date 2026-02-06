@@ -38,7 +38,8 @@ class LlamaServerProcess:
             "--alias", self.model_alias,
             "-c", str(self.n_ctx),
             "--host", self.host,
-            "--port", str(self.port)
+            "--port", str(self.port),
+            "--n-gpu-layers", "-1",
         ]
         if self.mmproj_path is not None:
             cmd += ["--mmproj", str(self.mmproj_path)]
