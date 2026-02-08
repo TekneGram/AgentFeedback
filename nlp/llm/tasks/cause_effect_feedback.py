@@ -57,35 +57,37 @@ def extract_cause_effect_language(client: LlmClient, paragraph: str, max_tokens:
     return []
 
 
-def cause_effect_suggestor(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def cause_effect_suggestor(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    suggestion = client.chat(system=SYSTEM_SUGGEST, user=s, max_tokens=max_tokens, temperature=0.2)
+    suggestion = client.chat(system=SYSTEM_SUGGEST, user=s, max_tokens=max_tokens, temperature=temperature)
     return (suggestion or "").strip() or "Try adding a cause-effect sentence to support your idea."
 
 
-def cause_effect_feedback(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def cause_effect_feedback(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    feedback = client.chat(system=SYSTEM_FEEDBACK, user=s, max_tokens=max_tokens, temperature=0.2)
+    feedback = client.chat(system=SYSTEM_FEEDBACK, user=s, max_tokens=max_tokens, temperature=temperature)
     return (feedback or "").strip() or "Good use of cause-effect language. Consider adding one more supporting detail."
 
 
-def cause_effect_praise(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def cause_effect_praise(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    praise = client.chat(system=SYSTEM_PRAISE, user=s, max_tokens=max_tokens, temperature=0.2)
+    praise = client.chat(system=SYSTEM_PRAISE, user=s, max_tokens=max_tokens, temperature=temperature)
     return (praise or "").strip() or "Strong use of cause-effect language."
 
 
-def route_cause_effect_feedback(client: LlmClient, paragraph: str, max_tokens: int) -> tuple[str, int, list[str]]:
+def route_cause_effect_feedback(
+    client: LlmClient, paragraph: str, max_tokens: int, temperature: float
+) -> tuple[str, int, list[str]]:
     examples = extract_cause_effect_language(client, paragraph, max_tokens=max_tokens)
     count = len(examples)
     if count <= 0:
-        return cause_effect_suggestor(client, paragraph, max_tokens=max_tokens), count, examples
+        return cause_effect_suggestor(client, paragraph, max_tokens=max_tokens, temperature=temperature), count, examples
     if count == 1:
-        return cause_effect_feedback(client, paragraph, max_tokens=max_tokens), count, examples
-    return cause_effect_praise(client, paragraph, max_tokens=max_tokens), count, examples
+        return cause_effect_feedback(client, paragraph, max_tokens=max_tokens, temperature=temperature), count, examples
+    return cause_effect_praise(client, paragraph, max_tokens=max_tokens, temperature=temperature), count, examples

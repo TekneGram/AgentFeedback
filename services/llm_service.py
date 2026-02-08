@@ -1,11 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
+import logging
 
 import spacy
-import json
 
 from interfaces.llm.client import LlmClient
+from nlp.llm.config_resolver import resolve_request_config
 from nlp.llm.tasks.test_task import answer, stream_answer
 from nlp.llm.tasks.metadata_extraction import extract_metadata
 from nlp.llm.tasks.grammar_correction import correct_sentences as correct_grammar_sentences
@@ -19,18 +20,27 @@ from nlp.llm.tasks.summarize_personalize import summarize_personalize_feedback
 
 if TYPE_CHECKING:
     from services.explainability import ExplainabilityRecorder
+    from app.settings import AppConfig
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class LlmService:
     client: LlmClient
     model_family: str = "instruct"
-    max_tokens_sentence: int = 128
-    max_tokens_sentence_thinking: int = 1024
+    app_cfg: "AppConfig | None" = None
+
+    def _require_cfg(self) -> "AppConfig":
+        if self.app_cfg is None:
+            raise ValueError("LlmService requires app_cfg for request configuration.")
+        return self.app_cfg
 
     def answer(self, sentence: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
             explain.log("LLM - answer", f"Answer prompt length: {len(sentence or '')}")
-        out = answer(self.client, sentence, max_tokens=self.max_tokens_sentence)
+        req = resolve_request_config("answer", self._require_cfg())
+        logger.debug("LLM answer request: %s", req)
+        out = answer(self.client, sentence, max_tokens=req.max_tokens, temperature=req.temperature)
         if explain is not None:
             explain.log("LLM - answer", f"Answer response length: {len(out or '')}")
         return out
@@ -38,7 +48,9 @@ class LlmService:
     def stream_answer(self, sentence: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
             explain.log("LLM - stream", f"Stream prompt length: {len(sentence or '')}")
-        out = stream_answer(self.client, sentence, max_tokens=self.max_tokens_sentence)
+        req = resolve_request_config("stream_answer", self._require_cfg())
+        logger.debug("LLM stream request: %s", req)
+        out = stream_answer(self.client, sentence, max_tokens=req.max_tokens)
         if explain is not None:
             explain.log("LLM - stream", f"Streamed {len(out)} chunks")
         return out
@@ -46,7 +58,9 @@ class LlmService:
     def extract_metadata(self, text: str, explain: "ExplainabilityRecorder | None" = None) -> Any:
         if explain is not None:
             explain.log("LLM - metadata extraction", f"JSON prompt length: {len(text or '')}")
-        out = extract_metadata(self.client, text, max_tokens=1024)
+        req = resolve_request_config("metadata_extraction", self._require_cfg())
+        logger.debug("LLM metadata request: %s", req)
+        out = extract_metadata(self.client, text, max_tokens=req.max_tokens)
         if explain is not None:
             if isinstance(out, dict):
                 explain.log("LLM - metadata extraction", f"JSON keys: {', '.join(sorted(out.keys()))}")
@@ -57,7 +71,10 @@ class LlmService:
     def correct_sentences(self, sentences: list[str], explain: "ExplainabilityRecorder | None" = None) -> list[str]:
         if explain is not None:
             explain.log("LLM - grammar correction", f"Correction sentence count: {len(sentences)}")
-        max_tokens = self.max_tokens_sentence_thinking if self.model_family == "thinking" else self.max_tokens_sentence
+        overrides = {"max_tokens": 1024} if self.model_family == "thinking" else None
+        req = resolve_request_config("grammar_correction", self._require_cfg(), request_overrides=overrides)
+        logger.debug("LLM grammar request: %s", req)
+        max_tokens = req.max_tokens
         results = correct_grammar_sentences(
             self.client,
             sentences,
@@ -79,10 +96,26 @@ class LlmService:
         sentences = [sent.text for sent in doc.sents]
         edited_sentences_minus_topic = " ".join(sentences[1:])
         learner_topic_sentence = sentences[0]
-        suggested_topic_sentence = generate_topic_sentence(self.client, edited_sentences_minus_topic, max_tokens=1024, temperature=0.5)
+        req_generate = resolve_request_config("topic_sentence_generate", self._require_cfg())
+        logger.debug("LLM topic generate request: %s", req_generate)
+        suggested_topic_sentence = generate_topic_sentence(
+            self.client,
+            edited_sentences_minus_topic,
+            max_tokens=req_generate.max_tokens,
+            temperature=req_generate.temperature,
+        )
         if explain is not None:
             explain.log("LLM - topic sentence analysis", f"Generate suggested sentence: {suggested_topic_sentence}")
-        feedback = analyze_topic_sentence(self.client, edited_sentences, learner_topic_sentence, suggested_topic_sentence, max_tokens=1024)
+        req_analyze = resolve_request_config("topic_sentence_analyze", self._require_cfg())
+        logger.debug("LLM topic analyze request: %s", req_analyze)
+        feedback = analyze_topic_sentence(
+            self.client,
+            edited_sentences,
+            learner_topic_sentence,
+            suggested_topic_sentence,
+            max_tokens=req_analyze.max_tokens,
+            temperature=req_analyze.temperature,
+        )
         if explain is not None:
             explain.log("LLM - topic sentence analysis", f"Provide feedback: {feedback}")
         return feedback
@@ -90,7 +123,11 @@ class LlmService:
     def cause_effect_feedback(self, paragraph: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
             explain.log("LLM - cause effect", f"Paragraph length: {len(paragraph or '')}")
-        feedback, count, examples = route_cause_effect_feedback(self.client, paragraph, max_tokens=512)
+        req = resolve_request_config("cause_effect_feedback", self._require_cfg())
+        logger.debug("LLM cause effect request: %s", req)
+        feedback, count, examples = route_cause_effect_feedback(
+            self.client, paragraph, max_tokens=req.max_tokens, temperature=req.temperature
+        )
         if explain is not None:
             explain.log("LLM - cause effect", f"Extracted examples: {count}")
             if examples:
@@ -105,7 +142,11 @@ class LlmService:
     def compare_contrast_feedback(self, paragraph: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
             explain.log("LLM - compare contrast", f"Paragraph length: {len(paragraph or '')}")
-        feedback, count, examples = route_compare_contrast_feedback(self.client, paragraph, max_tokens=512)
+        req = resolve_request_config("compare_contrast_feedback", self._require_cfg())
+        logger.debug("LLM compare contrast request: %s", req)
+        feedback, count, examples = route_compare_contrast_feedback(
+            self.client, paragraph, max_tokens=req.max_tokens, temperature=req.temperature
+        )
         if explain is not None:
             explain.log("LLM - compare contrast", f"Extracted examples: {count}")
             if examples:
@@ -120,7 +161,11 @@ class LlmService:
     def hedging_feedback(self, paragraph: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
             explain.log("LLM - hedging", f"Paragraph length: {len(paragraph or '')}")
-        feedback, count, examples = route_hedging_feedback(self.client, paragraph, max_tokens=512)
+        req = resolve_request_config("hedging_feedback", self._require_cfg())
+        logger.debug("LLM hedging request: %s", req)
+        feedback, count, examples = route_hedging_feedback(
+            self.client, paragraph, max_tokens=req.max_tokens, temperature=req.temperature
+        )
         if explain is not None:
             explain.log("LLM - hedging", f"Extracted examples: {count}")
             if examples:
@@ -135,22 +180,44 @@ class LlmService:
     def content_feedback(self, paragraph: str, explain: "ExplainabilityRecorder | None" = None) -> str:
         if explain is not None:
             explain.log("LLM - content feedback", f"Paragraph length: {len(paragraph or '')}")
-        feedback = compare_paragraphs(self.client, paragraph, max_tokens=512)
+        req_compare = resolve_request_config("content_compare", self._require_cfg())
+        logger.debug("LLM content compare request: %s", req_compare)
+        feedback = compare_paragraphs(
+            self.client,
+            paragraph,
+            max_tokens=req_compare.max_tokens,
+            temperature=req_compare.temperature,
+        )
         if explain is not None:
             explain.log("LLM - content feedback", f"{feedback}")
-        filtered_feedback = filter_feedback(self.client, feedback, max_tokens=256)
+        req_filter = resolve_request_config("content_filter", self._require_cfg())
+        logger.debug("LLM content filter request: %s", req_filter)
+        filtered_feedback = filter_feedback(
+            self.client,
+            feedback,
+            max_tokens=req_filter.max_tokens,
+            temperature=req_filter.temperature,
+        )
         if explain is not None:
             explain.log("LLM - filtered content feedback", f"Feedback: {filtered_feedback}")
         return filtered_feedback
     
     def conclusion_feedback(self, paragraph: str, explain: "ExplainabilityRecorder | None" = None) -> str:
-        feedback = evaluate_conclusion(self.client, paragraph, max_tokens=512)
+        req = resolve_request_config("conclusion_feedback", self._require_cfg())
+        logger.debug("LLM conclusion request: %s", req)
+        feedback = evaluate_conclusion(
+            self.client, paragraph, max_tokens=req.max_tokens, temperature=req.temperature
+        )
         if explain is not None:
             explain.log("LLM - conclusion sentence feedback", f"{feedback}")
         return feedback
     
     def summarize_personalize_feedback(self, feedback: str, explain: "ExplainabilityRecorder | None" = None) -> str:
-        summarized_feedback = summarize_personalize_feedback(self.client, feedback, max_tokens=512)
+        req = resolve_request_config("summarize_personalize", self._require_cfg())
+        logger.debug("LLM summarize request: %s", req)
+        summarized_feedback = summarize_personalize_feedback(
+            self.client, feedback, max_tokens=req.max_tokens, temperature=req.temperature
+        )
         if explain is not None:
             explain.log("LLM - summarize / personalize feedback", f"{summarized_feedback}")
         return summarized_feedback

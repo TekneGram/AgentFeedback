@@ -50,25 +50,27 @@ def extract_hedging_language(client: LlmClient, paragraph: str, max_tokens: int)
     return []
 
 
-def hedging_suggestor(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def hedging_suggestor(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    suggestion = client.chat(system=SYSTEM_SUGGEST, user=s, max_tokens=max_tokens, temperature=0.2)
+    suggestion = client.chat(system=SYSTEM_SUGGEST, user=s, max_tokens=max_tokens, temperature=temperature)
     return (suggestion or "").strip() or "Try adding a sentence that shows uncertainty or strength of claim."
 
 
-def hedging_praise(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def hedging_praise(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    praise = client.chat(system=SYSTEM_PRAISE, user=s, max_tokens=max_tokens, temperature=0.2)
+    praise = client.chat(system=SYSTEM_PRAISE, user=s, max_tokens=max_tokens, temperature=temperature)
     return (praise or "").strip() or "Good use of hedging or strength-of-claim language."
 
 
-def route_hedging_feedback(client: LlmClient, paragraph: str, max_tokens: int) -> tuple[str, int, list[str]]:
+def route_hedging_feedback(
+    client: LlmClient, paragraph: str, max_tokens: int, temperature: float
+) -> tuple[str, int, list[str]]:
     examples = extract_hedging_language(client, paragraph, max_tokens=max_tokens)
     count = len(examples)
     if count <= 0:
-        return hedging_suggestor(client, paragraph, max_tokens=max_tokens), count, examples
-    return hedging_praise(client, paragraph, max_tokens=max_tokens), count, examples
+        return hedging_suggestor(client, paragraph, max_tokens=max_tokens, temperature=temperature), count, examples
+    return hedging_praise(client, paragraph, max_tokens=max_tokens, temperature=temperature), count, examples

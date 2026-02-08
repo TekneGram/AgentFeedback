@@ -11,6 +11,7 @@ from services.docx_output_service import DocxOutputService
 # Import Llama server process + OpenAI-compatible client
 from nlp.llm.server_process import LlamaServerProcess
 from nlp.llm.client import OpenAICompatChatClient
+from nlp.llm.config_resolver import resolve_server_config, resolve_request_config
 
 # Standard utilities
 from pathlib import Path
@@ -73,17 +74,17 @@ def build_container(cfg):
                 cfg.llama.llama_mmproj_path
             ).expanduser().resolve()
 
-        # Create the Llama server process wrapper
-        server_proc = LlamaServerProcess(
-            server_bin=server_bin,
-            model_path=model_path,
-            model_alias=cfg.llama.llama_model_alias,
-            mmproj_path=mmproj_path,
-            host="127.0.0.1",
-            port=8080,
-            n_ctx=cfg.llama.llama_n_ctx,
-            n_threads=8
+        server_cfg = resolve_server_config(
+            cfg,
+            server_overrides={
+                "server_bin": server_bin,
+                "model_path": model_path,
+                "mmproj_path": mmproj_path,
+            },
         )
+
+        # Create the Llama server process wrapper
+        server_proc = LlamaServerProcess(cfg=server_cfg)
 
         # Start the llama server
         server_proc.start()
@@ -94,17 +95,19 @@ def build_container(cfg):
     # ---------- LLM client + service -----------
 
     # OpenAI-compativble HTTP client pointing at the local Llama server
+    default_req = resolve_request_config("default", cfg)
     client = OpenAICompatChatClient(
         chat_url=cfg.llama.llama_server_url,
         model_name=cfg.llama.llama_model_alias,
         timeout_s=120,
-        temperature=0.0,
+        temperature=default_req.temperature,
     )
 
     # Higher level LLM service with model-family-specific logic
     llm_service = LlmService(
         client=client,
         model_family=cfg.llama.llama_model_family,
+        app_cfg=cfg,
     )
 
     # ---------- Writing out assessments and explainability ----------

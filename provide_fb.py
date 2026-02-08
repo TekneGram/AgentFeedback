@@ -39,6 +39,9 @@ def main():
     # Construct the pipeline and inject the dependencies as kwargs (named arguments)
     # pipeline = FeedbackPipeline(**deps)
     type_print("Constructing the nlp pipeline.", color=Color.BLUE)
+
+    # Inject the dependencies (Dependency injection)
+    # Keep coupling with configuration low by passing app_cfg into an object method later.
     pipeline = FeedbackPipeline(
         loader=deps["loader"],
         ged=deps["ged"],

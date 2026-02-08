@@ -15,9 +15,9 @@ SYSTEM = (
     "Output only plain text.\n"
 )
 
-def evaluate_conclusion(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def evaluate_conclusion(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    suggestion = client.chat(system=SYSTEM, user=s, max_tokens=max_tokens, temperature=0.2)
+    suggestion = client.chat(system=SYSTEM, user=s, max_tokens=max_tokens, temperature=temperature)
     return (suggestion or "").strip() or "Nice job with the conclusion sentence!"

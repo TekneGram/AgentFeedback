@@ -16,9 +16,9 @@ SYSTEM = (
     "Do not refer to 'the learner'. Speak directly to your student.\n"
 )
 
-def summarize_personalize_feedback(client: LlmClient, feedback: str, max_tokens: int) -> str:
+def summarize_personalize_feedback(client: LlmClient, feedback: str, max_tokens: int, temperature: float) -> str:
     s = (feedback or "").strip()
     if not s:
         return feedback
-    summary = client.chat(system=SYSTEM, user=s, max_tokens=max_tokens, temperature=0.2)
+    summary = client.chat(system=SYSTEM, user=s, max_tokens=max_tokens, temperature=temperature)
     return (summary or "").strip() or "Great work overall!"

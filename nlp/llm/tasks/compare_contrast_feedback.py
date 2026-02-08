@@ -57,35 +57,37 @@ def extract_compare_contrast_language(client: LlmClient, paragraph: str, max_tok
     return []
 
 
-def compare_contrast_suggestor(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def compare_contrast_suggestor(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    suggestion = client.chat(system=SYSTEM_SUGGEST, user=s, max_tokens=max_tokens, temperature=0.2)
+    suggestion = client.chat(system=SYSTEM_SUGGEST, user=s, max_tokens=max_tokens, temperature=temperature)
     return (suggestion or "").strip() or "Try adding a compare/contrast sentence to support your idea."
 
 
-def compare_contrast_feedback(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def compare_contrast_feedback(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    feedback = client.chat(system=SYSTEM_FEEDBACK, user=s, max_tokens=max_tokens, temperature=0.2)
+    feedback = client.chat(system=SYSTEM_FEEDBACK, user=s, max_tokens=max_tokens, temperature=temperature)
     return (feedback or "").strip() or "Good use of compare/contrast language. Consider adding one more supporting detail."
 
 
-def compare_contrast_praise(client: LlmClient, paragraph: str, max_tokens: int) -> str:
+def compare_contrast_praise(client: LlmClient, paragraph: str, max_tokens: int, temperature: float) -> str:
     s = (paragraph or "").strip()
     if not s:
         return paragraph
-    praise = client.chat(system=SYSTEM_PRAISE, user=s, max_tokens=max_tokens, temperature=0.2)
+    praise = client.chat(system=SYSTEM_PRAISE, user=s, max_tokens=max_tokens, temperature=temperature)
     return (praise or "").strip() or "Strong use of compare/contrast language."
 
 
-def route_compare_contrast_feedback(client: LlmClient, paragraph: str, max_tokens: int) -> tuple[str, int, list[str]]:
+def route_compare_contrast_feedback(
+    client: LlmClient, paragraph: str, max_tokens: int, temperature: float
+) -> tuple[str, int, list[str]]:
     examples = extract_compare_contrast_language(client, paragraph, max_tokens=max_tokens)
     count = len(examples)
     if count <= 0:
-        return compare_contrast_suggestor(client, paragraph, max_tokens=max_tokens), count, examples
+        return compare_contrast_suggestor(client, paragraph, max_tokens=max_tokens, temperature=temperature), count, examples
     if count == 1:
-        return compare_contrast_feedback(client, paragraph, max_tokens=max_tokens), count, examples
-    return compare_contrast_praise(client, paragraph, max_tokens=max_tokens), count, examples
+        return compare_contrast_feedback(client, paragraph, max_tokens=max_tokens, temperature=temperature), count, examples
+    return compare_contrast_praise(client, paragraph, max_tokens=max_tokens, temperature=temperature), count, examples

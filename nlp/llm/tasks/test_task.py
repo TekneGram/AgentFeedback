@@ -6,7 +6,7 @@ SYSTEM = (
 )
 
 
-def answer(client: LlmClient, sentence: str, max_tokens: int) -> str:
+def answer(client: LlmClient, sentence: str, max_tokens: int, temperature: float) -> str:
     s = (sentence or "").strip()
     if not s:
         return sentence
@@ -14,6 +14,7 @@ def answer(client: LlmClient, sentence: str, max_tokens: int) -> str:
         system=SYSTEM,
         user=s,
         max_tokens=max_tokens,
+        temperature=temperature,
     )
     return raw or s
 

@@ -40,7 +40,14 @@ def generate_topic_sentence(client: LlmClient, text: str, max_tokens: int, tempe
         suggested = "No suggestion given!"
     return suggested
 
-def analyze_topic_sentence(client: LlmClient, text: str, learner_topic_sentence: str, suggested_topic_sentence: str, max_tokens: int) -> Any:
+def analyze_topic_sentence(
+    client: LlmClient,
+    text: str,
+    learner_topic_sentence: str,
+    suggested_topic_sentence: str,
+    max_tokens: int,
+    temperature: float,
+) -> Any:
     """
     Accepts a body paragraph with the topic sentence AND a suggested topic sentence.
     Compares the writer's topic sentence to the suggested topic sentence
@@ -56,7 +63,7 @@ def analyze_topic_sentence(client: LlmClient, text: str, learner_topic_sentence:
             "task": "Determine whether learner_topic_sentence is too general, too specific, off topic, or just right. If too general, too specific or off topic, explain why and offer the good_topic_sentence as an alternative."
         }
     user = json.dumps(user_json, ensure_ascii=False)
-    analysis = client.chat(system=SYSTEM_ANALYZE, user=user, max_tokens=max_tokens, temperature=0.0)
+    analysis = client.chat(system=SYSTEM_ANALYZE, user=user, max_tokens=max_tokens, temperature=temperature)
     print(f"analysis: {analysis}")
     analysis = (analysis or "").strip()
     if not analysis:
