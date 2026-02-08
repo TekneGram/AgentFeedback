@@ -8,6 +8,9 @@ from platformdirs import user_data_dir
 from shutil import which, copy2
 from helpers.llama_build import build_llama_server
 
+# Determines where the app data should live
+# In dev mode, uses .appdata
+# In prod uses the OS-standard user data directory.
 def get_app_base_dir(app_name: str, org: str) -> Path:
     # Explicit override for dev + Electron later
     override = os.getenv("APP_DATA_DIR")
@@ -22,6 +25,10 @@ def get_app_base_dir(app_name: str, org: str) -> Path:
     # Prod mode -> OS-standard user data dir
     return Path(user_data_dir(app_name, org)).resolve()
 
+# Ensures the main GGUF model file exists locally and returns a valud path if already present.
+# Otherwise, downloads if from Hugging Face
+# Notmalizes the file location if HF creates nested paths.
+# Returns the final local GGUF path.
 def ensure_gguf(cfg, models_dir: Path) -> Path:
     models_dir.mkdir(parents=True, exist_ok=True)
 
@@ -53,6 +60,11 @@ def ensure_gguf(cfg, models_dir: Path) -> Path:
 
     return local_target
 
+# Ensures the multimodal projection file exists (if required)
+# Return None if the model doesn't need one.
+# Reuses an existing valid file if present.
+# Otherwise, downloads it from Hugging Face
+# Return the local mmproj path
 def ensure_mmproj(cfg, models_dir: Path) -> Path | None:
     if not cfg.llama.hf_mmproj_filename:
         return None
@@ -76,6 +88,10 @@ def ensure_mmproj(cfg, models_dir: Path) -> Path | None:
         downloaded.replace(local_target)
     return local_target
 
+# Ensures the llama-server binary exists
+# Uses an existing binary if found.
+# Otherwise builds is locally via build_llama_server
+# Return the path to teh server executable.
 def ensure_llama_server_bin(app_cfg) -> Path:
     server = get_app_base_dir("EssayLens", "TekneGram") / "bin" / ("llama-server.exe" if sys.platform == "win32" else "llama-server")
     if server.exists() and server.stat().st_size > 0:
@@ -83,15 +99,22 @@ def ensure_llama_server_bin(app_cfg) -> Path:
     
     return build_llama_server(server, metal=False)
 
-
+# Fully prepares the llama runtime
 def bootstrap_llama(app_cfg):
     # Decide an app data dir (Electron later can pass its own)
+    
+    # Resolve the app base directory
     base = get_app_base_dir("EssayLens", "TekneGram")
+
+    # Ensure the model files are available
     models_dir = base / "models"
     gguf_path = ensure_gguf(app_cfg, models_dir)
     mmproj_path = ensure_mmproj(app_cfg, models_dir)
+
+    # Ensure the llama server binary exists
     server_bin = ensure_llama_server_bin(app_cfg)
 
+    # Update the llama config with resolved file paths
     new_llama = replace(
         app_cfg.llama,
         llama_gguf_path=str(gguf_path),
@@ -99,5 +122,8 @@ def bootstrap_llama(app_cfg):
         llama_mmproj_path=str(mmproj_path) if mmproj_path else None,
     )
 
+    # Validate the resolved configuration
     new_llama.validate_resolved()
+
+    # Return a new app configuration with updated llama settings.
     return replace(app_cfg, llama=new_llama)

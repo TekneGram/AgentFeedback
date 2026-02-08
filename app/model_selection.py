@@ -26,6 +26,7 @@ class HardwareInfo:
 
 
 def get_hardware_info() -> HardwareInfo:
+    """Collect basic hardware stats used to filter and recommend models."""
     total_ram_gb = psutil.virtual_memory().total / (1024 ** 3)
     cpu_count = os.cpu_count() or 1
     cuda_vram_gb = None
@@ -45,6 +46,7 @@ def get_hardware_info() -> HardwareInfo:
 
 
 def _fits_model(spec: LlamaModelSpec, hw: HardwareInfo) -> bool:
+    """Return True if the model fits available RAM/VRAM constraints."""
     if hw.total_ram_gb < spec.min_ram_gb:
         return False
     if hw.cuda_vram_gb is None:
@@ -53,6 +55,7 @@ def _fits_model(spec: LlamaModelSpec, hw: HardwareInfo) -> bool:
 
 
 def recommend_model(specs: list[LlamaModelSpec], hw: HardwareInfo) -> LlamaModelSpec:
+    """Pick the largest model that fits the current hardware."""
     # Best quality = largest model that fits
     ranked = sorted(specs, key=lambda s: (s.min_ram_gb, s.min_vram_gb), reverse=True)
     for spec in ranked:
@@ -62,25 +65,31 @@ def recommend_model(specs: list[LlamaModelSpec], hw: HardwareInfo) -> LlamaModel
 
 
 def _persist_path(base_dir: Path) -> Path:
+    """Return the path used to persist the selected model key."""
     return base_dir / "config" / "llama_model.json"
 
 def get_models_dir(base_dir: Path) -> Path:
+    """Return the models directory under the app data folder."""
     return base_dir / "models"
 
 def is_model_downloaded(spec: LlamaModelSpec, models_dir: Path) -> bool:
+    """Check whether the GGUF model file exists locally."""
     if spec.backend == "server":
         gguf = models_dir / spec.hf_filename
         return gguf.exists() and gguf.stat().st_size > 0
     return False
 
 def list_downloaded_specs(specs: list[LlamaModelSpec], models_dir: Path) -> list[LlamaModelSpec]:
+    """Return model specs that are already downloaded."""
     return [s for s in specs if is_model_downloaded(s, models_dir)]
 
 def list_available_for_download(specs: list[LlamaModelSpec], models_dir: Path) -> list[LlamaModelSpec]:
+    """Return model specs that are not yet downloaded."""
     return [s for s in specs if not is_model_downloaded(s, models_dir)]
 
 
 def load_persisted_model_key(base_dir: Path) -> str | None:
+    """Load the previously selected model key from disk, if present."""
     path = _persist_path(base_dir)
     if not path.exists():
         return None
@@ -93,12 +102,14 @@ def load_persisted_model_key(base_dir: Path) -> str | None:
 
 
 def persist_model_key(base_dir: Path, key: str) -> None:
+    """Persist the selected model key to disk."""
     path = _persist_path(base_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"llama_model_key": key}, indent=2), encoding="utf-8")
 
 
 def _format_spec_line(idx: int, spec: LlamaModelSpec, recommended_key: str) -> str:
+    """Format a single model entry line for display in selection UI."""
     marker = " (Recommended)" if spec.key == recommended_key else ""
     return (
         f"{idx}. {spec.display_name}{marker} | "
@@ -107,6 +118,7 @@ def _format_spec_line(idx: int, spec: LlamaModelSpec, recommended_key: str) -> s
 
 
 def prompt_initial_action(has_downloads: bool, has_installed: bool) -> str:
+    """Prompt user to select an installed model or download a new one."""
     print("\nModel setup")
     if has_downloads:
         label = "Select an installed model (Recommended)" if has_installed else "Select a model (Recommended)"
@@ -138,6 +150,7 @@ def prompt_model_choice_from_list(
     hw: HardwareInfo,
     label: str,
 ) -> LlamaModelSpec:
+    """Prompt the user to select a model from a list."""
     print(f"\nModel selection - {label}")
     print(hw.summary)
     print("Choose a model (press Enter for default):")
@@ -165,16 +178,31 @@ def prompt_model_choice_from_list(
 
 
 def select_model_and_update_config(app_cfg):
+    """Interactive model selection; returns updated app config with chosen model."""
+    # Establish the base directory
     base_dir = get_app_base_dir("EssayLens", "TekneGram")
+
+    # Fix the Llama backend to "server"
     backend = "server"
+
+    # Derive the directory where models are stored from the base directory.
     models_dir = get_models_dir(base_dir)
+
+    # Retrieve all the hardware information (RAM, CPU, VRAM, MPS)
     hw = get_hardware_info()
+
+    # Filter models in MODEL_SPECS
     all_specs = [s for s in MODEL_SPECS if s.backend == backend]
     filtered_specs = list(all_specs)
+
+    # Recommend a model based on hardware contraints
     recommended = recommend_model(filtered_specs, hw)
+
+    # Load a previously persisted model key from disk if it exists
     persisted_key = load_persisted_model_key(base_dir)
 
-    # If persisted choice fits, treat it as the recommended default.
+    # If persisted choice fits, treat it as the recommended default (overrides the recommendation)
+    # otherwise discard the persisted key
     if persisted_key:
         persisted_spec = next((s for s in filtered_specs if s.key == persisted_key), None)
         if persisted_spec and _fits_model(persisted_spec, hw):
@@ -182,14 +210,20 @@ def select_model_and_update_config(app_cfg):
         else:
             persisted_key = None
 
+    # Downloaded model specs are identified
     downloaded_specs = list_downloaded_specs(filtered_specs, models_dir)
+
+    # Identify specs of models available for download
     downloadable_specs = list_available_for_download(filtered_specs, models_dir)
 
+    # User is prompted to either select an installed model or to download a new one
     action = prompt_initial_action(
         has_downloads=bool(downloadable_specs),
         has_installed=bool(downloaded_specs),
     )
 
+    # Based on users choice, the appropriate model list is selected
+    # User is prompted to choose a model from the list
     if action == "select":
         selection_list = downloaded_specs or filtered_specs
         chosen = prompt_model_choice_from_list(
@@ -208,8 +242,11 @@ def select_model_and_update_config(app_cfg):
             hw,
             label="available downloads",
         )
+    # The user's chosen model key is persisted to disk
     persist_model_key(base_dir, chosen.key)
 
+    # Create a new llama config by copying old one and updating the model fields
+    # Context length is doubled if the model family is thinking.
     new_llama = replace(
         app_cfg.llama,
         llama_backend=backend,
@@ -222,5 +259,9 @@ def select_model_and_update_config(app_cfg):
         llama_model_family=chosen.model_family,
         llama_n_ctx=chosen.base_n_ctx * 2 if chosen.model_family == "thinking" else chosen.base_n_ctx,
     )
+
+    # Validate the new llama config.
     new_llama.validate()
+
+    # Now validated, replace the old llama config with the new one
     return replace(app_cfg, llama=new_llama)

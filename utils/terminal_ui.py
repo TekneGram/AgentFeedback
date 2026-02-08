@@ -17,7 +17,7 @@ class Color:
 
 
 # --------- TYPEWRITER ----------
-def type_print(text, delay=0.02, color=Color.RESET, newline=True):
+def type_print(text, delay=0.01, color=Color.RESET, newline=True):
     for ch in text:
         sys.stdout.write(color + ch + Color.RESET)
         sys.stdout.flush()
